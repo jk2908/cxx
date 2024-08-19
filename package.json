@@ -1,0 +1,56 @@
+{
+  "name": "@2908/cxx",
+  "version": "0.0.1",
+  "description": "Utilities for generating styles in React 19",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.mjs",
+        "types": "./index.d.ts"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "dev": "bun build -- --watch",
+    "build": "tsup src/index.ts",
+    "build:prod": "cross-env NODE_ENV=production bun build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jk2908/cxx.git"
+  },
+  "author": "@jk2908",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jk2908/cxx/issues"
+  },
+  "homepage": "https://github.com/jk2908/cxx#readme",
+  "devDependencies": {
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "@types/webpack": "^5.28.5",
+    "next": "^15.0.0-canary.120",
+    "react": "^19.0.0-rc-1eaccd82-20240816",
+    "react-dom": "^19.0.0-rc-1eaccd82-20240816"
+  },
+  "peerDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/webpack": "^5.28.5",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "cross-env": "^7.0.3",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4"
+  }
+}

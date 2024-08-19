@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "esModuleInterop": true,
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "outDir": "dist",
+    "strict": true,
+    "sourceMap": true,
+    "target": "ESNext",
+    "jsx": "preserve"
+  },
+  "include": ["src", "index.d.ts", "index.d.ts"],
+  "exclude": ["node_modules"],
+}
