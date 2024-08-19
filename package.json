@@ -1,6 +1,6 @@
 {
 	"name": "@jk2908/cxx",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"description": "Utilities for generating styles in React 19",
 	"type": "module",
 	"main": "dist/index.js",
