@@ -18,7 +18,7 @@
 	"files": ["dist", "index.d.ts"],
 	"scripts": {
 		"dev": "bun build -- --watch",
-		"build": "tsup src/index.ts",
+		"build": "tsup",
 		"build:prod": "cross-env NODE_ENV=production bun build"
 	},
 	"repository": {
@@ -48,9 +48,9 @@
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0"
 	},
-  "peerDependenciesMeta": {
-    "next": {
-      "optional": true
-    }
-  }
+	"peerDependenciesMeta": {
+		"next": {
+			"optional": true
+		}
+	}
 }
