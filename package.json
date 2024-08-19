@@ -1,51 +1,56 @@
 {
-  "name": "@jk2908/cxx",
-  "version": "0.0.2",
-  "description": "Utilities for generating styles in React 19",
-  "main": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "default": "./dist/index.mjs",
-        "types": "./index.d.ts"
-      }
+	"name": "@jk2908/cxx",
+	"version": "0.0.3",
+	"description": "Utilities for generating styles in React 19",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./next": {
+			"import": "./dist/next/index.js",
+			"types": "./dist/next/index.d.ts"
+		}
+	},
+	"files": ["dist", "index.d.ts"],
+	"scripts": {
+		"dev": "bun build -- --watch",
+		"build": "tsup src/index.ts",
+		"build:prod": "cross-env NODE_ENV=production bun build"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jk2908/cxx.git"
+	},
+	"author": "@jk2908",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/jk2908/cxx/issues"
+	},
+	"homepage": "https://github.com/jk2908/cxx#readme",
+	"devDependencies": {
+		"@types/react": "latest",
+		"@types/react-dom": "latest",
+		"@types/webpack": "^5.28.5",
+		"next": "^15.0.0-canary.120",
+		"react": "^19.0.0-rc-1eaccd82-20240816",
+		"react-dom": "^19.0.0-rc-1eaccd82-20240816",
+		"@biomejs/biome": "^1.8.3",
+		"cross-env": "^7.0.3",
+		"tsup": "^8.2.4",
+		"typescript": "^5.5.4"
+	},
+	"peerDependencies": {
+		"next": "^15.0.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
+	},
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
     }
-  },
-  "files": [
-    "dist",
-    "index.d.ts"
-  ],
-  "scripts": {
-    "dev": "bun build -- --watch",
-    "build": "tsup src/index.ts",
-    "build:prod": "cross-env NODE_ENV=production bun build"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jk2908/cxx.git"
-  },
-  "author": "@jk2908",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/jk2908/cxx/issues"
-  },
-  "homepage": "https://github.com/jk2908/cxx#readme",
-  "devDependencies": {
-    "@types/react": "*",
-    "@types/react-dom": "*",
-    "@types/webpack": "^5.28.5",
-    "next": "^15.0.0-canary.120",
-    "react": "^19.0.0-rc-1eaccd82-20240816",
-    "react-dom": "^19.0.0-rc-1eaccd82-20240816",
-    "@biomejs/biome": "^1.8.3",
-    "cross-env": "^7.0.3",
-    "tsup": "^8.2.4",
-    "typescript": "^5.5.4"
-  },
-  "peerDependencies": {
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
   }
 }
