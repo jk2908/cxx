@@ -8,6 +8,8 @@ export const tsup: Options = {
   entryPoints: [resolve(__dirname, 'src', 'index.ts')],
   minify: env.NODE_ENV === 'production',
   sourcemap: true,
-  splitting: false,
+  splitting: true,
   format: ['esm'],
+  target: ['esnext'],
+  external: ['react', 'react-dom', 'next'],
 }
