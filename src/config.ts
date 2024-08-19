@@ -1,8 +1,9 @@
 import type { Configuration } from 'webpack'
 import type { NextConfig } from 'next'
-import type { WebpackConfigContext,  } from 'next/dist/server/config-shared'
+import type { WebpackConfigContext } from 'next/dist/server/config-shared'
 
-const $id = (cls: string, path: string) => `${cls}_${path.replace(/\\/g, '/').split('/').pop()?.replace(/\./, '_')}`
+const $id = (cls: string, path: string) =>
+	`${cls}_${path.replace(/\\/g, '/').split('/').pop()?.replace(/\./, '_')}`
 
 function loader(source: string) {
 	const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+)\]\s*=\s*c\$\$3\s*`([\s\S]*?)`/gm
@@ -18,7 +19,7 @@ function loader(source: string) {
 			str.replace(/^`|`$/g, '').replace(/\\`/g, '`').replace(/\s+/g, ' ').trim(),
 		)
 
-		const css = strs.reduce((acc, str) => {			
+		const css = strs.reduce((acc, str) => {
 			const processed = str.replace(clsMatch, (_: string, cls: string) => {
 				// @ts-expect-error
 				const id = $id(cls, this.resourcePath)
@@ -48,7 +49,7 @@ export function withCxx(nextConfig: NextConfig) {
 				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,
 				use: {
-					loader
+					loader,
 				},
 			})
 

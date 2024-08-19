@@ -1,5 +1,5 @@
 {
-  "name": "@2908/cxx",
+  "name": "@jk2908/cxx",
   "version": "0.0.1",
   "description": "Utilities for generating styles in React 19",
   "main": "dist/index.mjs",
@@ -37,7 +37,11 @@
     "@types/webpack": "^5.28.5",
     "next": "^15.0.0-canary.120",
     "react": "^19.0.0-rc-1eaccd82-20240816",
-    "react-dom": "^19.0.0-rc-1eaccd82-20240816"
+    "react-dom": "^19.0.0-rc-1eaccd82-20240816",
+    "@biomejs/biome": "^1.8.3",
+    "cross-env": "^7.0.3",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4"
   },
   "peerDependencies": {
     "@types/react": "^18.3.3",
@@ -46,11 +50,5 @@
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  },
-  "dependencies": {
-    "@biomejs/biome": "^1.8.3",
-    "cross-env": "^7.0.3",
-    "tsup": "^8.2.4",
-    "typescript": "^5.5.4"
   }
 }
