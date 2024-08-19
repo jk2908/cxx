@@ -12,6 +12,6 @@
     "target": "ESNext",
     "jsx": "preserve"
   },
-  "include": ["src", "index.d.ts", "index.d.ts"],
+  "include": ["src", "index.d.ts"],
   "exclude": ["node_modules"],
 }
