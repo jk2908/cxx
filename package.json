@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Utilities for generating styles in React 19",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -44,15 +44,8 @@
     "typescript": "^5.5.4"
   },
   "peerDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@types/webpack": "^5.28.5",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  },
-  "overrides": {
-    "@types/react": "npm:types-react@beta",
-    "@types/react-dom": "npm:types-react-dom@beta"
   }
 }
