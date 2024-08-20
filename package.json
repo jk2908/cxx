@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "author": "Jerome Kenway",
   "repository": {
     "type": "git",
@@ -26,19 +26,34 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
     },
     "./next": {
-      "types": "./dist/next.d.ts",
-      "require": "./dist/next.cjs",
-      "default": "./dist/next.js"
+      "import": {
+        "types": "./dist/esm/next.d.ts",
+        "default": "./dist/esm/next.js"
+      },
+      "require": {
+        "types": "./dist/cjs/next.d.cts",
+        "default": "./dist/cjs/next.cjs"
+      }
     },
     "./next-cxx-loader": {
-      "types": "./dist/next-cxx-loader.d.ts",
-      "require": "./dist/next-cxx-loader.cjs",
-      "default": "./dist/next-cxx-loader.js"
+      "import": {
+        "types": "./dist/esm/next-cxx-loader.d.ts",
+        "default": "./dist/esm/next-cxx-loader.js"
+      },
+      "require": {
+        "types": "./dist/cjs/next-cxx-loader.d.cts",
+        "default": "./dist/cjs/next-cxx-loader.cjs"
+      }
     }
   },
   "bugs": {

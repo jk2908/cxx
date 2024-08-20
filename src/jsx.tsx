@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import * as React from 'react'
 
 declare module 'react' {
 	interface StyleHTMLAttributes<T> extends React.HTMLAttributes<T> {
@@ -15,7 +15,7 @@ export type StyleProps = {
 } & React.HTMLAttributes<HTMLStyleElement>
 
 export function Style({ children, precedence = 'medium' }: StyleProps) {
-	const id = useId()
+	const id = React.useId()
 
 	return (
 		<style href={id} precedence={precedence}>
