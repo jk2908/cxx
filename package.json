@@ -1,7 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "description": "Utilities for generating styles in React 19",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "author": "Jerome Kenway",
   "repository": {
     "type": "git",
@@ -31,15 +30,24 @@
       "types": "./dist/index.d.ts"
     },
     "./next": {
-      "import": "./dist/next/index.js",
-      "types": "./dist/next/index.d.ts"
+      "import": "./dist/next.js",
+      "types": "./dist/next.d.ts"
     }
   },
   "bugs": {
     "url": "https://github.com/jk2908/cxx/issues"
   },
-  "files": ["dist", "src"],
+  "description": "Utilities for generating styles in React 19",
+  "files": [
+    "dist",
+    "src"
+  ],
   "homepage": "https://github.com/jk2908/cxx#readme",
+  "keywords": [
+    "react",
+    "css",
+    "css-in-js"
+  ],
   "license": "MIT",
   "peerDependenciesMeta": {
     "next": {
@@ -50,10 +58,5 @@
     "build": "bunchee"
   },
   "type": "module",
-  "types": "dist/index.d.ts",
-  "keywords": [
-    "react",
-    "css",
-    "css-in-js"
-  ]
+  "types": "dist/index.d.ts"
 }
