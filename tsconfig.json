@@ -10,7 +10,7 @@
     "strict": true,
     "sourceMap": true,
     "target": "ESNext",
-    "jsx": "preserve"
+    "jsx": "preserve",
   },
   "include": ["src"],
   "exclude": ["node_modules"],

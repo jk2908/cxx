@@ -9,12 +9,12 @@ declare module 'react' {
 
 export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, ''] => [{}, '']
 
-export type Props = {
+export type StyleProps = {
 	children: React.ReactNode
 	precedence?: 'low' | 'medium' | 'high'
 } & React.HTMLAttributes<HTMLStyleElement>
 
-export function Style({ children, precedence = 'medium' }: Props) {
+export function Style({ children, precedence = 'medium' }: StyleProps) {
 	const id = useId()
 
 	return (

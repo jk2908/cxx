@@ -1,12 +1,12 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "author": "Jerome Kenway",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jk2908/cxx.git"
   },
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
     "@types/react": "latest",
@@ -26,12 +26,24 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      },
+      "require": {
+        "default": "./dist/index.cjs",
+        "types": "./dist/index.d.ts"
+      }
     },
     "./next": {
-      "import": "./dist/next.js",
-      "types": "./dist/next.d.ts"
+      "import": {
+        "default": "./dist/next.js",
+        "types": "./dist/next.d.ts"
+      },
+      "require": {
+        "default": "./dist/next.cjs",
+        "types": "./dist/next.d.ts"
+      }
     }
   },
   "bugs": {
