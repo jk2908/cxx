@@ -1,56 +1,59 @@
 {
-	"name": "@jk2908/cxx",
-	"version": "0.0.4",
-	"description": "Utilities for generating styles in React 19",
-	"type": "module",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
-	"exports": {
-		".": {
-			"import": "./dist/index.js",
-			"types": "./dist/index.d.ts"
-		},
-		"./next": {
-			"import": "./dist/next/index.js",
-			"types": "./dist/next/index.d.ts"
-		}
-	},
-	"files": ["dist", "index.d.ts"],
-	"scripts": {
-		"dev": "bun build -- --watch",
-		"build": "tsup",
-		"build:prod": "cross-env NODE_ENV=production bun build"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/jk2908/cxx.git"
-	},
-	"author": "@jk2908",
-	"license": "ISC",
-	"bugs": {
-		"url": "https://github.com/jk2908/cxx/issues"
-	},
-	"homepage": "https://github.com/jk2908/cxx#readme",
-	"devDependencies": {
-		"@types/react": "latest",
-		"@types/react-dom": "latest",
-		"@types/webpack": "^5.28.5",
-		"next": "^15.0.0-canary.120",
-		"react": "^19.0.0-rc-1eaccd82-20240816",
-		"react-dom": "^19.0.0-rc-1eaccd82-20240816",
-		"@biomejs/biome": "^1.8.3",
-		"cross-env": "^7.0.3",
-		"tsup": "^8.2.4",
-		"typescript": "^5.5.4"
-	},
-	"peerDependencies": {
-		"next": "^15.0.0-canary || ^15.0.0",
+  "name": "@jk2908/cxx",
+  "description": "Utilities for generating styles in React 19",
+  "version": "0.0.6",
+  "author": "Jerome Kenway",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jk2908/cxx.git"
+  },
+  "main": "dist/index.js",
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/webpack": "^5.28.5",
+    "bunchee": "^5.3.2",
+    "cross-env": "^7.0.3",
+    "next": "^15.0.0-canary.120",
+    "react": "^19.0.0-rc-1eaccd82-20240816",
+    "react-dom": "^19.0.0-rc-1eaccd82-20240816",
+    "typescript": "^5.5.4"
+  },
+  "peerDependencies": {
+    "next": "^15.0.0-canary || ^15.0.0",
     "react": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
-		"react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0"
-	},
-	"peerDependenciesMeta": {
-		"next": {
-			"optional": true
-		}
-	}
+    "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./next": {
+      "import": "./dist/next/index.js",
+      "types": "./dist/next/index.d.ts"
+    }
+  },
+  "bugs": {
+    "url": "https://github.com/jk2908/cxx/issues"
+  },
+  "files": ["dist", "src"],
+  "homepage": "https://github.com/jk2908/cxx#readme",
+  "license": "MIT",
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "bunchee"
+  },
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "react",
+    "css",
+    "css-in-js"
+  ]
 }
