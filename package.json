@@ -44,6 +44,16 @@
         "default": "./dist/next.cjs",
         "types": "./dist/next.d.ts"
       }
+    },
+    "./next-cxx-loader": {
+      "import": {
+        "default": "./dist/next-cxx-loader.js",
+        "types": "./dist/next-cxx-loader.d.ts"
+      },
+      "require": {
+        "default": "./dist/next-cxx-loader.cjs",
+        "types": "./dist/next-cxx-loader.d.ts"
+      }
     }
   },
   "bugs": {
