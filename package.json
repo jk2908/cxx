@@ -26,34 +26,19 @@
   },
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
     },
     "./next": {
-      "import": {
-        "types": "./dist/next.d.ts",
-        "default": "./dist/next.js"
-      },
-      "require": {
-        "types": "./dist/next.d.ts",
-        "default": "./dist/next.cjs"
-      }
+      "types": "./dist/next.d.ts",
+      "require": "./dist/next.cjs",
+      "default": "./dist/next.js"
     },
     "./next-cxx-loader": {
-      "import": {
-        "types": "./dist/next-cxx-loader.d.ts",
-        "default": "./dist/next-cxx-loader.js"
-      },
-      "require": {
-        "types": "./dist/next-cxx-loader.d.ts",
-        "default": "./dist/next-cxx-loader.cjs"
-      }
+      "types": "./dist/next-cxx-loader.d.ts",
+      "require": "./dist/next-cxx-loader.cjs",
+      "default": "./dist/next-cxx-loader.js"
     }
   },
   "bugs": {
