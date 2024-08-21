@@ -1,5 +1,3 @@
-import path from 'node:path'
-
 import type { Configuration } from 'webpack'
 import type { NextConfig } from 'next'
 import type { WebpackConfigContext } from 'next/dist/server/config-shared'
@@ -16,7 +14,7 @@ export function withCxx(nextConfig: NextConfig) {
 				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,
 				use: {
-          loader: path.resolve(__dirname, 'next-cxx-loader.js'),
+          loader: './next/loader.js',
 				},
 			})
 
