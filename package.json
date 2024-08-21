@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "author": "Jerome Kenway",
   "repository": {
     "type": "git",
@@ -45,14 +45,14 @@
         "default": "./dist/next/index.cjs"
       }
     },
-    "./next/loader": {
+    "./next/cxx-loader": {
       "import": {
-        "types": "./dist/next/loader.d.ts",
-        "default": "./dist/next/loader.js"
+        "types": "./dist/next/cxx-loader.d.ts",
+        "default": "./dist/next/cxx-loader.js"
       },
       "require": {
-        "types": "./dist/next/loader.d.ts",
-        "default": "./dist/next/loader.cjs"
+        "types": "./dist/next/cxx-loader.d.ts",
+        "default": "./dist/next/cxx-loader.cjs"
       }
     }
   },
