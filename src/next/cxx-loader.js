@@ -2,7 +2,7 @@ const $id = (cls, path) =>
 	`${cls}_${path.replace(/\\/g, '/').split('/').pop()?.replace(/\./, '_')}`
 
 export default function loader(source) {
-	const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+)\]\s*=\s*c\$\$3\s*`([\s\S]*?)`/gm
+	const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 	const clsMatch = /\.([a-zA-Z][a-zA-Z0-9]*)\s*{/g
 
 	const map = new Map()
@@ -17,7 +17,6 @@ export default function loader(source) {
 
 		const css = strs.reduce((acc, str) => {
 			const processed = str.replace(clsMatch, (_, cls) => {
-				// @ts-expect-error
 				const id = $id(cls, this.resourcePath)
 				map.set(cls, id)
 
