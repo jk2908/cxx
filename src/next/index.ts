@@ -14,7 +14,7 @@ export function withCxx(nextConfig: NextConfig) {
 				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,
 				use: {
-          loader: './next/loader.js',
+          loader: './loader.js',
 				},
 			})
 
