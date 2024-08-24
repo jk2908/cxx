@@ -1,6 +1,6 @@
-import { cxx, Style } from '@jk2908/cxx'
+import { cxx } from '@jk2908/cxx'
 
-const [styles, css] = cxx`
+const [styles, css, href] = cxx`
   .deduped {
     color: red;
     font-size: var(--text-lg);
@@ -13,9 +13,9 @@ export function Deduped({ children }: { children: React.ReactNode }) {
     <div className={styles.deduped}>
       {children}
 
-      <Style>
+      <style href={href} precedence="medium">
         {css}
-      </Style>
+      </style>
     </div>
   )
 }
