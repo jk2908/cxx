@@ -1,0 +1,72 @@
+@layer base, utils;
+
+@layer base {
+  :root {
+    --space-1\/2: calc(var(--space) / 2);
+    --space: .25rem;
+    --space-2x: calc(var(--space) * 2);
+    --space-3x: calc(var(--space) * 3);
+    --space-4x: calc(var(--space) * 4);
+    --space-5x: calc(var(--space) * 5);
+    --space-6x: calc(var(--space) * 6);
+    --space-7x: calc(var(--space) * 7);
+    --space-8x: calc(var(--space) * 8);
+    --space-9x: calc(var(--space) * 9);
+    --space-10x: calc(var(--space) * 10);
+    --space-11x: calc(var(--space) * 11);
+    --space-12x: calc(var(--space) * 12);
+    --space-13x: calc(var(--space) * 13);
+    --space-14x: calc(var(--space) * 14);
+    --space-15x: calc(var(--space) * 15);
+    --space-16x: calc(var(--space) * 16);
+    --space-17x: calc(var(--space) * 17);
+    --space-18x: calc(var(--space) * 18);
+
+    --text-xs: .75rem;
+    --text-sm: .875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+
+    --tracking-tight: -.05em;
+    --tracking-wide: .05em;
+    --tracking-wider: .1em;
+    --tracking-widest: .2em;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    block-size: 100%;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, Helvetica, sans-serif;
+    letter-spacing: var(--tracking-wide);
+    line-height: 1.5;
+    min-block-size: 100%;
+  }
+}
+
+@layer utils {
+  .sr-only {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: auto;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+}
