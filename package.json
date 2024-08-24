@@ -1,12 +1,14 @@
 {
   "name": "@jk2908/cxx",
   "version": "0.0.24",
+  "type": "module",
   "author": "Jerome Kenway",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jk2908/cxx.git"
   },
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
     "@types/react": "latest",
@@ -14,9 +16,9 @@
     "@types/webpack": "^5.28.5",
     "bunchee": "^5.3.2",
     "cross-env": "^7.0.3",
-    "next": "^15.0.0-canary.120",
-    "react": "^19.0.0-rc-1eaccd82-20240816",
-    "react-dom": "^19.0.0-rc-1eaccd82-20240816",
+    "next": "^15.0.0-canary.128",
+    "react": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
+    "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
     "typescript": "^5.5.4"
   },
   "peerDependencies": {
@@ -78,7 +80,5 @@
   },
   "scripts": {
     "build": "bunchee"
-  },
-  "type": "module",
-  "types": "dist/index.d.ts"
+  }
 }
