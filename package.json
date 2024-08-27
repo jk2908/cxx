@@ -9,6 +9,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "bunchee"
+  },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
     "@types/react": "latest",
@@ -19,12 +22,14 @@
     "next": "^15.0.0-canary.128",
     "react": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
     "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
   },
   "peerDependencies": {
     "next": "^15.0.0-canary || ^15.0.0",
     "react": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
-    "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0"
+    "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
+    "vite": "^5.0.0"
   },
   "exports": {
     ".": {
@@ -56,6 +61,16 @@
         "types": "./dist/next/cxx-loader.d.ts",
         "default": "./dist/next/cxx-loader.cjs"
       }
+    },
+    "./vite-plugin-cxx/index": {
+      "import": {
+        "types": "./dist/vite-plugin-cxx/index.d.ts",
+        "default": "./dist/vite-plugin-cxx/index.js"
+      },
+      "require": {
+        "types": "./dist/vite-plugin-cxx/index.d.ts",
+        "default": "./dist/vite-plugin-cxx/index.cjs"
+      }
     }
   },
   "bugs": {
@@ -70,15 +85,17 @@
   "keywords": [
     "react",
     "css",
-    "css-in-js"
+    "css-in-js",
+    "vite-plugin",
+    "webpack-loader"
   ],
   "license": "MIT",
   "peerDependenciesMeta": {
     "next": {
       "optional": true
+    },
+    "vite": {
+      "optional": true
     }
-  },
-  "scripts": {
-    "build": "bunchee"
   }
 }
