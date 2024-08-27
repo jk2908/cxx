@@ -16,21 +16,21 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 const clsMatch = /\.([a-zA-Z][a-zA-Z0-9]*)\s*{/g
 
-export function inject(source: string, path: string) {
+export function inject(source: string, id: string) {
 	const clsMap = new Map()
 
 	const code = source.replace(varMatch, (_: string, ...args: string[]) => {
 		const [varOne, varTwo, varThree, tmpl] = args
 
 		const css = tmpl.replace(clsMatch, (_: string, cls: string) => {
-			const id = `cxx-${cyrb53(`${cls}${path.replace(/\.[^/.]+$/, '')}`)}`
-			clsMap.set(cls, id)
+			const hashedCls = `cxx-${cyrb53(`${cls}${id.replace(/\.[^/.]+$/, '')}`)}`
+			clsMap.set(cls, hashedCls)
 
-			return `.${id} {`
+			return `.${hashedCls} {`
 		})
 
 		const classes = Object.fromEntries(clsMap)
-		const href = cyrb53([...Object.keys(classes), path].join(''))
+		const href = cyrb53([...Object.keys(classes), id].join(''))
 
 		return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${css}\`\nconst ${varThree} = \`${href}\``
 	})
