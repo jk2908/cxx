@@ -16,48 +16,38 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 ]
 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
-const clsMatch = /\.([a-zA-Z][a-zA-Z0-9]*)\s*{/g
 
 type Config<C extends CustomAtRules> = {
-	process: 'lightningcss' | false | undefined
 	lightningcss: TransformOptions<C>
 }
 
 export function inject(source: string, id: string, config?: Config<CustomAtRules>) {
-	const { process, lightningcss } = config ?? {
-		process: 'lightningcss',
+	const { lightningcss } = config ?? {
 		lightningcss: {
 			filename: id,
 			minify: true,
+			cssModules: true,
 		},
 	}
 
-	const decoder = new TextDecoder('utf-8')
-	const clsMap = new Map()
-
 	try {
-		const code = source.replace(varMatch, (_: string, ...args: string[]) => {
-			const [varOne, varTwo, varThree, tmpl] = args
+		const tmpl = source.replace(varMatch, (_: string, ...args: string[]) => {
+			const [varOne, varTwo, varThree, css] = args
 
-			let css = tmpl.replace(clsMatch, (_: string, cls: string) => {
-				const hashedCls = `cxx-${cyrb53(`${cls}${id.replace(/\.[^/.]+$/, '')}`)}`
-				clsMap.set(cls, hashedCls)
-
-				return `.${hashedCls} {`
+			const { code, exports } = transform({
+				...lightningcss,
+				code: Buffer.from(css),
 			})
 
-			css =
-				process === 'lightningcss' && lightningcss
-					? decoder.decode(transform({ ...lightningcss, code: Buffer.from(css) }).code)
-					: css
+			const href = cyrb53([...Object.keys(exports ? exports : {}), id].join(''))
+			const classes = exports ? Object.fromEntries(
+				Object.entries(exports).map(([key, value]) => [key, value.name]),
+			) : {}
 
-			const classes = Object.fromEntries(clsMap)
-			const href = cyrb53([...Object.keys(classes), id].join(''))
-
-			return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${css}\`\nconst ${varThree} = \`${href}\``
+			return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${code}\`\nconst ${varThree} = \`${href}\``
 		})
 
-		return code
+		return tmpl
 	} catch (err) {
 		console.error('cxx error :(', err)
 		return source
