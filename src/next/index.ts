@@ -6,7 +6,7 @@ import type { WebpackConfigContext } from 'next/dist/server/config-shared'
 
 import type { Config } from '../'
 
-export function withCxx(nextConfig: NextConfig = {}, config: Config = {}) {
+export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 	return {
 		...nextConfig,
 		webpack(conf: Configuration, options: WebpackConfigContext) {
