@@ -21,9 +21,11 @@ export type Config = {
 	lightningcss?: Partial<TransformOptions<CustomAtRules>>
 }
 
-const DEFAULT_TRANSFORMS: Config['lightningcss'] = {
-	minify: true,
-	cssModules: true,
+const DEFAULT_CONFIG: Config = {
+	lightningcss: {
+		minify: true,
+		cssModules: true,
+	},
 } as const
 
 export function inject(source: string, id: string, config: Config = {}) {
@@ -34,7 +36,7 @@ export function inject(source: string, id: string, config: Config = {}) {
 			const [varOne, varTwo, varThree, css] = args
 
 			const { code, exports } = transform({
-				...DEFAULT_TRANSFORMS,
+				...DEFAULT_CONFIG.lightningcss,
 				...lightningcss,
 				filename: id,
 				code: Buffer.from(css),
