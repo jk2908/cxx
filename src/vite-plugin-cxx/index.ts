@@ -2,7 +2,7 @@ import type { Plugin } from 'vite'
 
 import { inject, type Config } from '../'
 
-export default function vitePluginCxx(config?: Config): Plugin {
+export default function vitePluginCxx(config: Config = {}): Plugin {
   return {
     name: 'cxx',
     enforce: 'pre',
