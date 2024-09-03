@@ -14,7 +14,7 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 ]
 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
-const clsMatch = /\.([a-zA-Z][a-zA-Z0-9]*)\s*{/g
+const clsMatch = /\.([a-zA-Z][a-zA-Z0-9_-]+)(?=[^a-zA-Z0-9_-]|$)/g
 
 export type Config = {
 	transforms?: {
@@ -25,7 +25,7 @@ export type Config = {
 const DEFAULT_CONFIG: Config = {
 	transforms: {
 		minify: true,
-	}
+	},
 } as const
 
 export function inject(source: string, id: string, config: Config = {}) {
@@ -36,10 +36,14 @@ export function inject(source: string, id: string, config: Config = {}) {
 		const [varOne, varTwo, varThree, tmpl] = args
 
 		let css = tmpl.replace(clsMatch, (_: string, cls: string) => {
+			if (clsMap.has(cls)) {
+				return `.${clsMap.get(cls)}`
+			}
+
 			const hashedCls = `cxx-${cyrb53(`${cls}${id.replace(/\.[^/.]+$/, '')}`)}`
 			clsMap.set(cls, hashedCls)
 
-			return `.${hashedCls} {`
+			return `.${hashedCls}`
 		})
 
 		if (resolvedConfig?.transforms?.minify) {
