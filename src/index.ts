@@ -17,32 +17,33 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 
-type Config<C extends CustomAtRules> = {
-	lightningcss: TransformOptions<C>
+export type Config = {
+	lightningcss?: Partial<TransformOptions<CustomAtRules>>
 }
 
-export function inject(source: string, id: string, config?: Config<CustomAtRules>) {
-	const { lightningcss } = config ?? {
-		lightningcss: {
-			filename: id,
-			minify: true,
-			cssModules: true,
-		},
-	}
+const DEFAULT_TRANSFORMS: Config['lightningcss'] = {
+	minify: true,
+	cssModules: true,
+} as const
+
+export function inject(source: string, id: string, config: Config = {}) {
+	const { lightningcss } = config
 
 	try {
 		const tmpl = source.replace(varMatch, (_: string, ...args: string[]) => {
 			const [varOne, varTwo, varThree, css] = args
 
 			const { code, exports } = transform({
+				...DEFAULT_TRANSFORMS,
 				...lightningcss,
+				filename: id,
 				code: Buffer.from(css),
 			})
 
 			const href = cyrb53([...Object.keys(exports ? exports : {}), id].join(''))
-			const classes = exports ? Object.fromEntries(
-				Object.entries(exports).map(([key, value]) => [key, value.name]),
-			) : {}
+			const classes = exports
+				? Object.fromEntries(Object.entries(exports).map(([key, value]) => [key, value.name]))
+				: {}
 
 			return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${code}\`\nconst ${varThree} = \`${href}\``
 		})

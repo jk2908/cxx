@@ -1,14 +1,14 @@
 import type { Plugin } from 'vite'
 
-import { inject } from '../'
+import { inject, type Config } from '../'
 
-export default function vitePluginCxx(): Plugin {
+export default function vitePluginCxx(config?: Config): Plugin {
   return {
     name: 'cxx',
     enforce: 'pre',
     transform(code, id) {
       return {
-        code: inject(code, id),
+        code: inject(code, id, config),
         map: null
       }
     }
