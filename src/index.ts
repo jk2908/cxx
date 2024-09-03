@@ -16,7 +16,16 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 const clsMatch = /\.([a-zA-Z][a-zA-Z0-9]*)\s*{/g
 
-export function inject(source: string, id: string) {
+export type Config = {
+	minify?: boolean
+}
+
+const DEFAULT_CONFIG: Config = {
+	minify: true,
+} as const
+
+export function inject(source: string, id: string, config: Config = DEFAULT_CONFIG) {
+	const { minify } = config
 	const clsMap = new Map()
 
 	const code = source.replace(varMatch, (_: string, ...args: string[]) => {
@@ -28,6 +37,16 @@ export function inject(source: string, id: string) {
 
 			return `.${hashedCls} {`
 		})
+
+		if (minify) {
+			css
+				.replace(/\s+/g, ' ')
+				.replace(/\s*{\s*/g, '{')
+				.replace(/\s*}\s*/g, '}')
+				.replace(/;\s*/g, ';')
+				.replace(/:\s*/g, ':')
+				.trim()
+		}
 
 		const classes = Object.fromEntries(clsMap)
 		const href = cyrb53([...Object.keys(classes), id].join(''))
