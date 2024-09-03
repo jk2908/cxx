@@ -17,15 +17,19 @@ const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`(
 const clsMatch = /\.([a-zA-Z][a-zA-Z0-9]*)\s*{/g
 
 export type Config = {
-	minify?: boolean
+	transforms?: {
+		minify?: boolean
+	}
 }
 
 const DEFAULT_CONFIG: Config = {
-	minify: true,
+	transforms: {
+		minify: true,
+	}
 } as const
 
-export function inject(source: string, id: string, config: Config = DEFAULT_CONFIG) {
-	const { minify } = config
+export function inject(source: string, id: string, config: Config = {}) {
+	const resolvedConfig = { ...DEFAULT_CONFIG, ...config }
 	const clsMap = new Map()
 
 	const code = source.replace(varMatch, (_: string, ...args: string[]) => {
@@ -38,7 +42,7 @@ export function inject(source: string, id: string, config: Config = DEFAULT_CONF
 			return `.${hashedCls} {`
 		})
 
-		if (minify) {
+		if (resolvedConfig?.transforms?.minify) {
 			css = css
 				.replace(/\s+/g, ' ')
 				.replace(/\s*{\s*/g, '{')
