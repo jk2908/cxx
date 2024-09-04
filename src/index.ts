@@ -36,9 +36,7 @@ export function inject(source: string, id: string, config: Config = {}) {
 		const [varOne, varTwo, varThree, tmpl] = args
 
 		let css = tmpl.replace(clsMatch, (_: string, cls: string) => {
-			if (clsMap.has(cls)) {
-				return `.${clsMap.get(cls)}`
-			}
+			if (clsMap.has(cls)) return `.${clsMap.get(cls)}`
 
 			const hashedCls = `cxx-${cyrb53(`${cls}${id.replace(/\.[^/.]+$/, '')}`)}`
 			clsMap.set(cls, hashedCls)
