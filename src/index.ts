@@ -42,7 +42,7 @@ export function inject(source: string, id: string, config: Config = {}) {
 				code: Buffer.from(css),
 			})
 
-			const href = cyrb53([...Object.keys(exports ? exports : {}), id].join(''))
+			const href = cyrb53([...Object.keys(exports ?? {}), id].join(''))
 			const classes = exports
 				? Object.fromEntries(Object.entries(exports).map(([key, value]) => [key, value.name]))
 				: {}
