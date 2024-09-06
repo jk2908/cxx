@@ -33,15 +33,13 @@ export function inject<C extends CustomAtRules = CustomAtRules>(
 	id: string,
 	config: Config<C> = {},
 ) {
-	const { lightningcss } = config
-
 	try {
 		const tmpl = source.replace(varMatch, (_: string, ...args: string[]) => {
 			const [varOne, varTwo, varThree, css] = args
 
 			const { code, exports } = transform({
 				...DEFAULT_CONFIG.lightningcss,
-				...lightningcss,
+				...config.lightningcss,
 				filename: id,
 				code: Buffer.from(css),
 			})
