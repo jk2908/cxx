@@ -17,8 +17,8 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 
-export type Config = {
-	lightningcss?: Partial<TransformOptions<CustomAtRules>>
+export type Config<C extends CustomAtRules = CustomAtRules> = {
+	lightningcss?: Partial<TransformOptions<C>>
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -28,7 +28,11 @@ const DEFAULT_CONFIG: Config = {
 	},
 } as const
 
-export function inject(source: string, id: string, config: Config = {}) {
+export function inject<C extends CustomAtRules = CustomAtRules>(
+	source: string,
+	id: string,
+	config: Config<C> = {},
+) {
 	const { lightningcss } = config
 
 	try {
