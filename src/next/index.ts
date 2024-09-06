@@ -20,7 +20,7 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 				use: {
 					loader: path.resolve(__dirname, 'cxx-loader.js'),
 					options: {
-						...config,
+						...config
 					}
 				},
 			})

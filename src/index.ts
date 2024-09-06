@@ -1,5 +1,7 @@
 import { cyrb53 } from './cyrb53'
 
+import { type TransformOptions, type CustomAtRules, transform } from 'lightningcss'
+
 declare module 'react' {
 	interface StyleHTMLAttributes<T> extends React.HTMLAttributes<T> {
 		href?: string
@@ -14,51 +16,45 @@ export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, 
 ]
 
 const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
-const clsMatch = /\.([a-zA-Z][a-zA-Z0-9_-]+)(?=[^a-zA-Z0-9_-]|$)/g
 
-export type Config = {
-	transforms?: {
-		minify?: boolean
-	}
+export type Config<C extends CustomAtRules = CustomAtRules> = {
+	lightningcss?: Partial<TransformOptions<C>>
 }
 
 const DEFAULT_CONFIG: Config = {
-	transforms: {
+	lightningcss: {
 		minify: true,
+		cssModules: true,
 	},
 } as const
 
-export function inject(source: string, id: string, config: Config = {}) {
-	const resolvedConfig = { ...DEFAULT_CONFIG, ...config }
-	const clsMap = new Map()
+export function inject<C extends CustomAtRules = CustomAtRules>(
+	source: string,
+	id: string,
+	config: Config<C> = {},
+) {
+	try {
+		const tmpl = source.replace(varMatch, (_: string, ...args: string[]) => {
+			const [varOne, varTwo, varThree, css] = args
 
-	const code = source.replace(varMatch, (_: string, ...args: string[]) => {
-		const [varOne, varTwo, varThree, tmpl] = args
+			const { code, exports } = transform({
+				...DEFAULT_CONFIG.lightningcss,
+				...config.lightningcss,
+				filename: id,
+				code: Buffer.from(css),
+			})
 
-		let css = tmpl.replace(clsMatch, (_: string, cls: string) => {
-			if (clsMap.has(cls)) return `.${clsMap.get(cls)}`
+			const href = cyrb53([...Object.keys(exports ?? {}), id].join(''))
+			const classes = exports
+				? Object.fromEntries(Object.entries(exports).map(([key, value]) => [key, value.name]))
+				: {}
 
-			const hashedCls = `cxx-${cyrb53(`${cls}${id.replace(/\.[^/.]+$/, '')}`)}`
-			clsMap.set(cls, hashedCls)
-
-			return `.${hashedCls}`
+			return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${code}\`\nconst ${varThree} = \`${href}\``
 		})
 
-		if (resolvedConfig?.transforms?.minify) {
-			css = css
-				.replace(/\s+/g, ' ')
-				.replace(/\s*{\s*/g, '{')
-				.replace(/\s*}\s*/g, '}')
-				.replace(/;\s*/g, ';')
-				.replace(/:\s*/g, ':')
-				.trim()
-		}
-
-		const classes = Object.fromEntries(clsMap)
-		const href = cyrb53([...Object.keys(classes), id].join(''))
-
-		return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${css}\`\nconst ${varThree} = \`${href}\``
-	})
-
-	return code
+		return tmpl
+	} catch (err) {
+		console.error('cxx error :(', err)
+		return source
+	}
 }
