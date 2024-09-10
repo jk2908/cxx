@@ -1,6 +1,6 @@
 cxx
 
-library based on experiments with React 19 suspenseful style hoisting and deduping. `cxx` takes in CSS inside template literals and returns a three item tuple; the processed CSS, if configured (on by default) a CSS Modules exports object, and also optionally for usage, an id to pass to the href attribute of a style tag for deduping see (React docs)[https://react.dev/reference/react-dom/components/style#noun-labs-1201738-(2)]. The function actually just returns placeholders for the above items which will be replaced at build time. No string interpolation is supported within the CSS template tag input at the moment.
+library based on experiments with React 19 suspenseful style hoisting and deduping. `cxx` intakes CSS via a template literal arg and returns a three item tuple; the processed CSS, if configured (on by default) a CSS Modules exports object, and also optionally for usage, an id to pass to the href attribute of a style tag for deduping see [React docs](https://react.dev/reference/react-dom/components/style#noun-labs-1201738-(2)). The function actually just returns placeholders for the above items which will be replaced at build time. No string interpolation is supported within the CSS template tag input at the moment.
 
 example usage:
 In ui templates `cmp.tsx`:
@@ -17,6 +17,10 @@ In ui templates `cmp.tsx`:
     return (
       <header className={styles.header}>
         ...
+
+        <style href={href} precedence="medium">
+          {css}
+        </style>
       </header>
     )
   }
@@ -28,7 +32,7 @@ In ui templates `cmp.tsx`:
   const [css] = cxx`...`
 ```
 
-CSS is transformed using (lightningcss)[https://www.npmjs.com/package/lightningcss]. There is access to the full lightningcss config. 
+CSS is transformed using [lightningcss](https://www.npmjs.com/package/lightningcss). There is access to the full lightningcss config. 
 
 vite `vite.config.ts`:
 ```
