@@ -9,13 +9,14 @@ declare module 'react' {
 	}
 }
 
-export const cxx = (_: TemplateStringsArray): readonly [Record<string, string>, '', ''] => [
-	{},
+export const cxx = (_: TemplateStringsArray): readonly ['', Record<string, string>, ''] => [
 	'',
+	{},
 	'',
 ]
 
-const varMatch = /(?:const|var|let)\s*\[(\w+),\s*(\w+),\s*(\w+)\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
+const varMatch =
+	/(?:const|var|let)\s*\[(\w+|)\s*,?\s*(\w+|)\s*,?\s*(\w+|)\s*\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 
 export type Config<C extends CustomAtRules = CustomAtRules> = {
 	lightningcss?: Partial<TransformOptions<C>>
@@ -49,7 +50,13 @@ export function inject<C extends CustomAtRules = CustomAtRules>(
 				? Object.fromEntries(Object.entries(exports).map(([key, value]) => [key, value.name]))
 				: {}
 
-			return `const ${varOne} = ${JSON.stringify(classes)}\nconst ${varTwo} = \`${code}\`\nconst ${varThree} = \`${href}\``
+			return [
+				varOne && `const ${varOne} = \`${code}\``,
+				varTwo && `const ${varTwo} = ${JSON.stringify(classes)}`,
+				varThree && `const ${varThree} = \`${href}\``,
+			]
+				.filter(Boolean)
+				.join('\n')
 		})
 
 		return tmpl
