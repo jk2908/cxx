@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -35,44 +35,20 @@
   },
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./next": {
-      "import": {
-        "types": "./dist/next/index.d.ts",
-        "default": "./dist/next/index.js"
-      },
-      "require": {
-        "types": "./dist/next/index.d.ts",
-        "default": "./dist/next/index.cjs"
-      }
+      "types": "./dist/next/index.d.ts",
+      "default": "./dist/next/index.js"
     },
     "./next/cxx-loader": {
-      "import": {
-        "types": "./dist/next/cxx-loader.d.ts",
-        "default": "./dist/next/cxx-loader.js"
-      },
-      "require": {
-        "types": "./dist/next/cxx-loader.d.ts",
-        "default": "./dist/next/cxx-loader.cjs"
-      }
+      "types": "./dist/next/cxx-loader.d.ts",
+      "default": "./dist/next/cxx-loader.js"
     },
     "./vite-plugin-cxx": {
-      "import": {
-        "types": "./dist/vite-plugin-cxx/index.d.ts",
-        "default": "./dist/vite-plugin-cxx/index.js"
-      },
-      "require": {
-        "types": "./dist/vite-plugin-cxx/index.d.ts",
-        "default": "./dist/vite-plugin-cxx/index.cjs"
-      }
+      "types": "./dist/vite-plugin-cxx/index.d.ts",
+      "default": "./dist/vite-plugin-cxx/index.js"
     }
   },
   "bugs": {
