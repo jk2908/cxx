@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -62,10 +62,14 @@
   "homepage": "https://github.com/jk2908/cxx#readme",
   "keywords": [
     "react",
+    "react-19",
     "css",
     "css-in-js",
     "vite-plugin",
-    "webpack-loader"
+    "webpack-loader",
+    "lightningcss",
+    "next",
+    "vite"
   ],
   "license": "MIT",
   "peerDependenciesMeta": {
