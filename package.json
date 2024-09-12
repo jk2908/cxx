@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -62,7 +62,7 @@
   "homepage": "https://github.com/jk2908/cxx#readme",
   "keywords": [
     "react",
-    "react-19",
+    "react19",
     "css",
     "css-in-js",
     "vite-plugin",
