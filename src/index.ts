@@ -1,12 +1,12 @@
 declare module 'react' {
 	interface StyleHTMLAttributes<T> extends React.HTMLAttributes<T> {
 		href?: string
-		precedence?: 'low' | 'medium' | 'high'
+		precedence?: 'default' | 'low' | 'medium' | 'high'
 	}
 }
 
-export const cxx = (_: TemplateStringsArray): readonly ['', Record<string, string>, ''] => [
+export const cxx = (_: TemplateStringsArray): readonly ['', '', Record<string, string>] => [
+	'',
 	'',
 	{},
-	'',
 ]
