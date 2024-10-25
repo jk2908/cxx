@@ -1,4 +1,4 @@
-import fs from 'node:fs'
+import { promises as fs } from 'node:fs'
 import { cyrb53 } from './cyrb53'
 
 import { type TransformOptions, type CustomAtRules, transform } from 'lightningcss'
@@ -6,7 +6,7 @@ import { type TransformOptions, type CustomAtRules, transform } from 'lightningc
 const varMatch =
 	/(?:const|var|let)\s*\[(\w+|)\s*,?\s*(\w+|)\s*,?\s*(\w+|)\s*\]\s*=\s*cxx\s*`([\s\S]*?)`/gm
 
-type Mode = 'inline' | 'external'
+type Mode = 'inline' | 'extract'
 
 export type Config<C extends CustomAtRules = CustomAtRules> = {
 	mode?: Mode
@@ -20,6 +20,15 @@ const DEFAULT_CONFIG: Config = {
 		cssModules: true,
 	},
 } as const
+
+const EXTRACT_DIR = 'cxx' as const
+
+const clean = (str: string) =>
+	str
+		.split(/[\\/]/)
+		.pop()
+		?.replace(/\.(?=[^.]*$).*/, '')
+		.replace(/\./g, '') ?? ''
 
 export function inject<C extends CustomAtRules = CustomAtRules>(
 	source: string,
@@ -37,21 +46,15 @@ export function inject<C extends CustomAtRules = CustomAtRules>(
 				code: Buffer.from(css),
 			})
 
-			const href = cyrb53([...Object.keys(exports ?? {}), id].join(''))
+			const hashed = cyrb53([...Object.keys(exports ?? {}), id].join(''))
+			const href =
+				config?.mode === 'extract' ? `./${EXTRACT_DIR}/${clean(id)}-${hashed}.css` : `${hashed}`
+
 			const classes = exports
 				? Object.fromEntries(Object.entries(exports).map(([key, value]) => [key, value.name]))
 				: {}
 
-			if (config?.mode === 'external') {
-				fs.writeFileSync(`./${href}.css`, code)
-
-				return [
-					varOne && `const ${varOne} = \`${href}\``,
-					varTwo && `const ${varTwo} = ${JSON.stringify(classes)}`,
-				]
-					.filter(Boolean)
-					.join('\n')
-			}
+			if (config?.mode === 'extract') extract(clean(id), href, code)
 
 			return [
 				varOne && `const ${varOne} = \`${code}\``,
@@ -67,4 +70,17 @@ export function inject<C extends CustomAtRules = CustomAtRules>(
 		console.error('cxx error :(', err)
 		return source
 	}
+}
+
+async function extract(id: string, href: string, code: Uint8Array) {
+	await fs.mkdir(EXTRACT_DIR, { recursive: true })
+
+	const files = await fs.readdir(EXTRACT_DIR)
+	const existing = files.filter(f => f.startsWith(id))
+
+	if (existing.length) {
+		await Promise.all(existing.map(f => fs.rm(`${EXTRACT_DIR}/${f}`)))
+	}
+
+	await fs.writeFile(href, code)
 }

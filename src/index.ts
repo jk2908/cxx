@@ -1,7 +1,7 @@
 declare module 'react' {
 	interface StyleHTMLAttributes<T> extends React.HTMLAttributes<T> {
 		href?: string
-		precedence?: 'default' | 'low' | 'medium' | 'high'
+		precedence?: 'reset' | 'low' | 'medium' | 'high'
 	}
 }
 
