@@ -4,7 +4,7 @@ import type { Configuration } from 'webpack'
 import type { NextConfig } from 'next'
 import type { WebpackConfigContext } from 'next/dist/server/config-shared'
 
-import type { Config } from '../'
+import type { Config } from '../inject'
 
 export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 	return {
@@ -27,5 +27,13 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 
 			return resolvedNextConfig
 		},
+		turbo: {
+			rules: {
+				'./app/**/*.tsx': {
+					loaders: [path.resolve(__dirname, 'cxx-loader.js')],
+					as: './tsx'
+				}
+			}
+		}
 	}
 }

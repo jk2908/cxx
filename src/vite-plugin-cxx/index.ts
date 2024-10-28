@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
 
-import { inject, type Config } from '../'
+import { inject, type Config } from '../inject'
 
 export default function vitePluginCxx(config?: Config): Plugin {
   return {
