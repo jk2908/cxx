@@ -27,5 +27,13 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 
 			return resolvedNextConfig
 		},
+		turbo: {
+			rules: {
+				'./app/**/*.tsx': {
+					loaders: [path.resolve(__dirname, 'cxx-loader.js')],
+					as: './tsx'
+				}
+			}
+		}
 	}
 }
