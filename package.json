@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.1.5-canary.3",
+  "version": "0.1.5-canary.4",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -83,8 +83,5 @@
     "vite": {
       "optional": true
     }
-  },
-  "dependencies": {
-    "@jk2908/cxx": "0.1.5-canary.1"
   }
 }

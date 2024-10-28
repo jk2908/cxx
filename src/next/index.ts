@@ -10,7 +10,7 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 	const IS_CANARY = require('next/package.json').version?.includes('canary') ?? false
 	const CXX_LOADER = path.resolve(__dirname, 'cxx-loader.js')
 
-	const turbo = {
+	const turboConfig = {
 		...nextConfig.turbo,
 		rules: {
 			...(nextConfig.turbo?.rules ?? {}),
@@ -41,6 +41,8 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 
 			return resolvedWebpackConfig
 		},
-		...(IS_CANARY ? { experimental: turbo } : { turbo }),
+		...(IS_CANARY
+			? { experimental: { ...nextConfig?.experimental, turbo: turboConfig } }
+			: { turbo: turboConfig }),
 	}
 }
