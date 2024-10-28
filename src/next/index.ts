@@ -14,9 +14,9 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 		...nextConfig.turbo,
 		rules: {
 			...(nextConfig.turbo?.rules ?? {}),
-			'./app/**/*.tsx': {
+			'./{app,pages,src/app,src/pages}/**/*.(tsx|jsx)': {
 				loaders: [CXX_LOADER],
-				as: './tsx',
+				as: './{tsx,jsx}',
 			},
 		},
 	}
@@ -29,7 +29,7 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 			) satisfies Configuration
 
 			resolvedWebpackConfig?.module?.rules?.push({
-				test: /\.(js|jsx|ts|tsx)$/,
+				test: /[\\/](pages|app|src[\\/]pages|src[\\/]app)[\\/].*\.(jsx|tsx)$/,
 				exclude: /node_modules/,
 				use: {
 					loader: CXX_LOADER,
