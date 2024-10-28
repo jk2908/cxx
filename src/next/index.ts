@@ -7,6 +7,20 @@ import type { WebpackConfigContext } from 'next/dist/server/config-shared'
 import type { Config } from '../inject'
 
 export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
+	const IS_CANARY = require('next/package.json').version?.includes('canary') ?? false
+	const CXX_LOADER = path.resolve(__dirname, 'cxx-loader.js')
+
+	const turbo = {
+		...nextConfig.turbo,
+		rules: {
+			...(nextConfig.turbo?.rules ?? {}),
+			'./app/**/*.tsx': {
+				loaders: [CXX_LOADER],
+				as: './tsx',
+			},
+		},
+	}
+
 	return {
 		...nextConfig,
 		webpack(conf: Configuration, options: WebpackConfigContext) {
@@ -18,7 +32,7 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,
 				use: {
-					loader: path.resolve(__dirname, 'cxx-loader.js'),
+					loader: CXX_LOADER,
 					options: {
 						...config,
 					},
@@ -27,15 +41,6 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 
 			return resolvedWebpackConfig
 		},
-		turbo: {
-			...nextConfig.turbo,
-			rules: {
-				...(nextConfig.turbo?.rules ?? {}),
-				'./app/**/*.tsx': {
-					loaders: [path.resolve(__dirname, 'cxx-loader.js')],
-					as: './tsx',
-				},
-			},
-		},
+		...(IS_CANARY ? { experimental: turbo } : { turbo }),
 	}
 }
