@@ -10,30 +10,32 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 	return {
 		...nextConfig,
 		webpack(conf: Configuration, options: WebpackConfigContext) {
-			const resolvedNextConfig = (
+			const resolvedWebpackConfig = (
 				typeof nextConfig?.webpack === 'function' ? nextConfig?.webpack(conf, options) : conf
 			) satisfies Configuration
 
-			resolvedNextConfig?.module?.rules?.push({
+			resolvedWebpackConfig?.module?.rules?.push({
 				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,
 				use: {
 					loader: path.resolve(__dirname, 'cxx-loader.js'),
 					options: {
-						...config
-					}
+						...config,
+					},
 				},
 			})
 
-			return resolvedNextConfig
+			return resolvedWebpackConfig
 		},
 		turbo: {
+			...nextConfig.turbo,
 			rules: {
+				...(nextConfig.turbo?.rules ?? {}),
 				'./app/**/*.tsx': {
 					loaders: [path.resolve(__dirname, 'cxx-loader.js')],
-					as: './tsx'
-				}
-			}
-		}
+					as: './tsx',
+				},
+			},
+		},
 	}
 }
