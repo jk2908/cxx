@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.1.4",
+  "version": "0.1.5-canary.5",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -40,6 +40,7 @@
     },
     "./inject": {
       "types": "./dist/inject/index.d.ts",
+      "require": "./dist/inject/index.cjs",
       "default": "./dist/inject/index.js"
     },
     "./next": {
@@ -48,6 +49,7 @@
     },
     "./next/cxx-loader": {
       "types": "./dist/next/cxx-loader.d.ts",
+      "require": "./dist/next/cxx-loader.cjs",
       "default": "./dist/next/cxx-loader.js"
     },
     "./vite-plugin-cxx": {
