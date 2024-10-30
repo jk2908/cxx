@@ -6,17 +6,27 @@ import type { WebpackConfigContext } from 'next/dist/server/config-shared'
 
 import type { Config } from '../inject'
 
-export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
-	const IS_CANARY = require('next/package.json').version?.includes('canary') ?? false
-	const CXX_LOADER = path.resolve(__dirname, 'cxx-loader.js')
+export function withCxx(nextConfig: NextConfig = {}, config: Config = {}) {
+	const pkg = require('next/package.json')
+
+	const IS_CANARY = pkg.version?.includes('canary') ?? false
+	const IS_TURBO = process.env.TURBOPACK === '1'
+	const TURBO_GLOB = '*.{tsx,jsx,ts,js}'
+
+	const loader = path.resolve(__dirname, `cxx-loader.${IS_TURBO ? 'cjs' : 'js'}`)
 
 	const turboConfig = {
 		...nextConfig.turbo,
 		rules: {
 			...(nextConfig.turbo?.rules ?? {}),
-			'./{app,pages,src/app,src/pages}/**/*.(tsx|jsx)': {
-				loaders: [CXX_LOADER],
-				as: './{tsx,jsx}',
+			[TURBO_GLOB]: {
+				loaders: [
+					...(nextConfig.turbo?.rules?.[TURBO_GLOB]?.loaders ?? []),
+					{
+						loader,
+						options: config,
+					},
+				],
 			},
 		},
 	}
@@ -29,13 +39,11 @@ export function withCxx(nextConfig: NextConfig = {}, config?: Config) {
 			) satisfies Configuration
 
 			resolvedWebpackConfig?.module?.rules?.push({
-				test: /[\\/](pages|app|src[\\/]pages|src[\\/]app)[\\/].*\.(jsx|tsx)$/,
+				test: /\.(js|jsx|ts|tsx)$/,
 				exclude: /node_modules/,
 				use: {
-					loader: CXX_LOADER,
-					options: {
-						...config,
-					},
+					loader,
+					options: config,
 				},
 			})
 
