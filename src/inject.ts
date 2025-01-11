@@ -29,7 +29,7 @@ export function inject<C extends CustomAtRules = CustomAtRules>(
 				...DEFAULT_CONFIG.lightningcss,
 				...config.lightningcss,
 				filename: id,
-				code: Buffer.from(css),
+				code: new TextEncoder().encode(css),
 			})
 
 			const href = cyrb53([...Object.keys(exports ?? {}), id].join(''))
