@@ -18,7 +18,7 @@ export function withCxx(nextConfig: NextConfig = {}, config: Config = {}) {
 	const turboConfig = {
 		...nextConfig.turbo,
 		rules: {
-			...(nextConfig.turbo?.rules ?? {}),
+			...nextConfig.turbo?.rules,
 			[TURBO_GLOB]: {
 				loaders: [
 					...(nextConfig.turbo?.rules?.[TURBO_GLOB]?.loaders ?? []),
