@@ -1,6 +1,6 @@
 import { cxx } from '@jk2908/cxx'
 
-const [styles, css, href] = cxx`
+const [css, styles, href] = cxx`
   .deduped {
     color: red;
     font-size: var(--text-lg);
