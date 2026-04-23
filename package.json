@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -10,7 +10,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "bunchee"
+    "build": "bunchee",
+    "prepack": "npm run build"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
