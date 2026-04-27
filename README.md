@@ -1,58 +1,71 @@
-cxx
+# @jk2908/cxx
 
-library based on experiments with React 19 suspenseful style hoisting and deduping. `cxx` intakes CSS via a template literal arg and returns a three item tuple; the processed CSS, if configured (on by default) a CSS Modules exports object, and also optionally for usage, an id to pass to the href attribute of a style tag for deduping see [React docs](https://react.dev/reference/react-dom/components/style#noun-labs-1201738-(2)). The function actually just returns placeholders for the above items which will be replaced at build time. No string interpolation is supported within the CSS template tag.
+Build-time CSS template tag utilities for React 19.
 
-example usage:
-In ui templates `cmp.tsx`:
-```
-  import { cxx } from '@jk2908/cxx'
+## Install
 
-  const [css, styles, href] = cxx`
-    .header {
-      display: flex;
-    }
-  ` 
-
-  function Cmp() {
-    return (
-      <header className={styles.header}>
-        ...
-
-        <style href={href} precedence="medium">
-          {css}
-        </style>
-      </header>
-    )
-  }
+```sh
+npm install @jk2908/cxx lightningcss react react-dom
 ```
 
-CSS is transformed using [lightningcss](https://www.npmjs.com/package/lightningcss). There is access to the full lightningcss config. 
+## Usage
 
-vite `vite.config.ts`:
+```tsx
+import { cxx } from '@jk2908/cxx'
+
+const [css, styles, href] = cxx`
+	.header {
+		display: flex;
+		gap: 0.75rem;
+	}
+`
+
+export function Header() {
+	return (
+		<header className={styles.header}>
+			<style href={href} precedence="medium">
+				{css}
+			</style>
+		</header>
+	)
+}
 ```
-  import cxx from '@jk2908/cxx/vite-plugin-cxx'
 
-  export default defineConfig({
-    plugins: [react(), cxx({ ...optional cxx config })],
-  })
+The `cxx` tag is a build-time marker. Use the Vite plugin or Next helper so the placeholders are replaced before runtime. String interpolation inside the template is not supported.
 
-  // turn off default config
-  export default defineConfig({
-    plugins: [cxx({
-      lightningcss: {
-        minify: false,
-        cssModules: false,
-        ...other transform options
-      }
-    })]
-  })
+## Vite
+
+```ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import cxx from '@jk2908/cxx/vite-plugin-cxx'
+
+export default defineConfig({
+	plugins: [react(), cxx()],
+})
 ```
 
-next `next.config.ts`:
-```
-  import { withCxx } from '@jk2908/cxx/next'
+## Next
 
-  const nextConfig = {}
+```ts
+import { withCxx } from '@jk2908/cxx/next'
 
-  export default withCxx(nextConfig, { ...optional cxx config })
+const nextConfig = {}
+
+export default withCxx(nextConfig)
 ```
+
+Both integrations accept an optional config object with `lightningcss` options. The default transform enables minification and CSS Modules output.
+
+```ts
+cxx({
+	lightningcss: {
+		minify: false,
+		cssModules: false,
+	},
+})
+```
+
+## License
+
+MIT

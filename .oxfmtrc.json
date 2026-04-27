@@ -1,0 +1,49 @@
+{
+  "useTabs": true,
+  "tabWidth": 2,
+  "printWidth": 90,
+  "singleQuote": true,
+  "jsxSingleQuote": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "all",
+  "semi": false,
+  "arrowParens": "avoid",
+  "bracketSameLine": true,
+  "bracketSpacing": true,
+  "singleAttributePerLine": false,
+  "sortImports": {
+    "newlinesBetween": false,
+    "customGroups": [
+      {
+        "groupName": "vite",
+        "elementNamePattern": ["vite"]
+      },
+      {
+        "groupName": "types",
+        "elementNamePattern": ["@types/*", "*/*.d.ts"]
+      },
+      {
+        "groupName": "utils",
+        "elementNamePattern": ["./utils/**", "../utils/**"]
+      }
+    ],
+    "groups": [
+      "type-import",
+      { "newlinesBetween": true },
+      "value-builtin",
+      { "newlinesBetween": true },
+      "vite",
+      { "newlinesBetween": true },
+      "value-external",
+      { "newlinesBetween": true },
+      "types",
+      { "newlinesBetween": true },
+      "utils",
+      { "newlinesBetween": true },
+      ["type-parent", "type-sibling", "type-index"],
+      ["value-parent", "value-sibling", "value-index"],
+      "unknown"
+    ]
+  },
+  "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
+}
