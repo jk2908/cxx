@@ -6,6 +6,7 @@
     "type": "git",
     "url": "git+https://github.com/jk2908/mdsrc.git"
   },
+  "homepage": "https://github.com/jk2908/cxx#readme",
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260421.2",
     "oxfmt": "^0.35.0",
