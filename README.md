@@ -31,7 +31,39 @@ export function Header() {
 }
 ```
 
-The `cxx` tag is a build-time marker. Use the Vite plugin or Next helper so the placeholders are replaced before runtime. String interpolation inside the template is not supported.
+The `cxx` tag is a build-time marker. Use the Vite plugin so the placeholders are replaced before runtime. String interpolation inside the template is not supported.
+
+Named blocks can opt into generated class-key types:
+
+```tsx
+import { cxx, type HeroClasses } from '@jk2908/cxx'
+
+const [css, styles, href] = cxx.tag<HeroClasses>('hero')`
+	.hero {
+		display: flex;
+	}
+
+	.copy {
+		max-width: 60ch;
+	}
+`
+
+export function Hero() {
+	return (
+		<section className={styles.hero}>
+			<p className={styles.copy}>Type-safe class names.</p>
+		</section>
+	)
+}
+
+// `styles.coppy` is a type error
+```
+
+The string passed to `cxx.tag(...)` is turned into the exported type name by appending `typeSuffix` and then normalising the whole result into Pascal Case. With the default suffix, `cxx.tag('hero')` becomes `HeroClasses`, and `cxx.tag('marketing-banner')` becomes `MarketingBannerClasses`. If `typeSuffix` is `false`, those become `Hero` and `MarketingBanner` instead.
+
+Generated class-key types are imported from the root package, not a separate generated subpath.
+
+Because `.cxx` is generated, it is recommended to add `.cxx` to your `.gitignore`.
 
 ## Vite
 
@@ -41,30 +73,15 @@ import react from '@vitejs/plugin-react'
 import cxx from '@jk2908/cxx/vite-plugin-cxx'
 
 export default defineConfig({
-	plugins: [react(), cxx()],
+	plugins: [react(), cxx({ typeSuffix: 'Classes' })],
 })
 ```
 
-## Next
+The transform always emits minified CSS and CSS Modules class mappings.
 
-```ts
-import { withCxx } from '@jk2908/cxx/next'
+`typeSuffix` controls the generated exported type name suffix. It defaults to `'Classes'`. Set it to `false` to omit the suffix.
 
-const nextConfig = {}
-
-export default withCxx(nextConfig)
-```
-
-Both integrations accept an optional config object with `lightningcss` options. The default transform enables minification and CSS Modules output.
-
-```ts
-cxx({
-	lightningcss: {
-		minify: false,
-		cssModules: false,
-	},
-})
-```
+See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 ## License
 

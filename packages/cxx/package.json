@@ -1,0 +1,79 @@
+{
+  "name": "@jk2908/cxx",
+  "version": "0.2.0",
+  "type": "module",
+  "author": "Jerome Kenway",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jk2908/cxx.git"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "bun run ./build.ts && bun x tsc --project tsconfig.json --emitDeclarationOnly",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@parcel/watcher": "^2.5.6",
+    "lightningcss": "^1.27.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.13",
+    "@types/node": "^24.0.1",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@typescript/native-preview": "^7.0.0-dev.20260421.2",
+    "next": "^16.2.10",
+    "react": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
+    "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  },
+  "peerDependencies": {
+    "next": "^15.3.0 || ^16.0.0",
+    "react": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
+    "react-dom": "^19.0.0-rc || ^19.0.0-beta || ^19.0.0",
+    "vite": "^4.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/next/index.d.ts",
+      "default": "./dist/next/index.js"
+    },
+    "./vite-plugin-cxx": {
+      "types": "./dist/vite/index.d.ts",
+      "default": "./dist/vite/index.js"
+    }
+  },
+  "bugs": {
+    "url": "https://github.com/jk2908/cxx/issues"
+  },
+  "description": "Utilities for generating styles in React 19",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "homepage": "https://github.com/jk2908/cxx#readme",
+  "keywords": [
+    "react",
+    "react19",
+    "css",
+    "css-in-js",
+    "vite-plugin",
+    "lightningcss",
+    "vite"
+  ],
+  "license": "MIT",
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  }
+}

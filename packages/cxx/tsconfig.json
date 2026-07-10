@@ -1,0 +1,22 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"lib": ["ESNext"],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"strict": true,
+		"skipLibCheck": true,
+		"types": ["bun"],
+		"jsx": "react-jsx",
+		"jsxImportSource": "react",
+		"declaration": true,
+		"declarationMap": true,
+		"allowSyntheticDefaultImports": true,
+		"noUnusedLocals": true,
+		"rootDir": "src",
+		"outDir": "dist",
+		"sourceMap": true,
+		"verbatimModuleSyntax": true
+	},
+	"include": ["src"]
+}

@@ -1,19 +1,23 @@
 import { Deduped } from '#/app/deduped'
 
+import { Tagged } from './tagged'
+
 export default function Home() {
-  return (
-    <>
-      <Deduped>
-        <h1>Yo</h1>
-      </Deduped>
+	return (
+		<>
+			<Deduped>
+				<h1>Deduped CSS 1</h1>
+			</Deduped>
 
-      <Deduped>
-        <p>What&apos;s up</p>
-      </Deduped>
+			<Deduped>
+				<p>Deduped CSS 2</p>
+			</Deduped>
 
-      <Deduped>
-        <p>Bye</p>
-      </Deduped>
-    </>
-  )
+			<Deduped>
+				<p>Deduped CSS 3</p>
+			</Deduped>
+
+			<Tagged>Type safe CSS</Tagged>
+		</>
+	)
 }
