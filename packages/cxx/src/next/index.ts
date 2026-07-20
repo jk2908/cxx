@@ -123,7 +123,7 @@ export function processFile(
 }
 
 /**
- * Close all active Parcel subscriptions before the process exits.
+ * Close all active Parcel subscriptions before the process exits
  */
 async function cleanup() {
 	await Promise.all(

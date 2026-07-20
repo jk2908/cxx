@@ -1,0 +1,51 @@
+{
+  "name": "vscode-cxx",
+  "displayName": "cxx",
+  "description": "Syntax highlighting for cxx and cxx.tag() tagged template literals",
+  "version": "0.1.0",
+  "publisher": "jk2908",
+  "author": "Jerome Kenway",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jk2908/cxx.git",
+    "directory": "packages/vscode-cxx"
+  },
+  "homepage": "https://github.com/jk2908/cxx#readme",
+  "bugs": {
+    "url": "https://github.com/jk2908/cxx/issues"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "icon": "icon.png",
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "cxx",
+    "css",
+    "css-in-js",
+    "react",
+    "react19",
+    "syntax"
+  ],
+  "contributes": {
+    "grammars": [
+      {
+        "path": "./syntaxes/cxx-injection.json",
+        "scopeName": "source.css.cxx-injection",
+        "injectTo": [
+          "source.ts",
+          "source.tsx",
+          "source.js",
+          "source.jsx",
+          "source.mts",
+          "source.mjs",
+          "source.cjs",
+          "source.js.jsx"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+.vscode/**
+.vscodeignore
+.gitignore
+.gitattributes
+.git
+node_modules/**
+dist/**
+*.log
+**/*.test.ts
+**/*.map
+**/node_modules/**
+../../**

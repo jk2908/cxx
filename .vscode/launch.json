@@ -1,0 +1,13 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "cxx: highlight (examples)",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExtensions": ["${workspaceFolder}/packages/vscode-cxx"],
+			"args": ["${workspaceFolder}/examples"],
+			"outFiles": []
+		}
+	]
+}

@@ -217,5 +217,3 @@ export const cxx: Cxx = Object.assign((_: TemplateStringsArray): Result => ['', 
 			'',
 		],
 })
-
-export const css = cxx

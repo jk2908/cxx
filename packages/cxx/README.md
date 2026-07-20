@@ -70,7 +70,7 @@ Because `.cxx` is generated, it is recommended to add `.cxx` to your `.gitignore
 ```ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import cxx from '@jk2908/cxx/vite-plugin-cxx'
+import cxx from '@jk2908/cxx/vite'
 
 export default defineConfig({
 	plugins: [react(), cxx({ typeSuffix: 'Classes' })],
@@ -81,7 +81,24 @@ The transform always emits minified CSS and CSS Modules class mappings.
 
 `typeSuffix` controls the generated exported type name suffix. It defaults to `'Classes'`. Set it to `false` to omit the suffix.
 
+## Next
+
+```ts
+import { withCxx } from '@jk2908/cxx/next'
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {}
+
+export default withCxx(nextConfig, { typeSuffix: 'Classes' })
+```
+
+Use the Next integration when you want `cxx` transforms and generated class-key types inside a Next app. 
+
 See [CHANGELOG.md](./CHANGELOG.md) for release notes.
+
+## Syntax highlighting
+
+The [`vscode-cxx`](../vscode-cxx) extension provides syntax highlighting for `cxx` and `cxx.tag()` tagged template literals in VS Code. See its [README](../vscode-cxx) for install instructions.
 
 ## License
 

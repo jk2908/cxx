@@ -1,6 +1,6 @@
 {
   "name": "@jk2908/cxx",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "author": "Jerome Kenway",
   "repository": {
@@ -44,7 +44,7 @@
       "types": "./dist/next/index.d.ts",
       "default": "./dist/next/index.js"
     },
-    "./vite-plugin-cxx": {
+    "./vite": {
       "types": "./dist/vite/index.d.ts",
       "default": "./dist/vite/index.js"
     }
