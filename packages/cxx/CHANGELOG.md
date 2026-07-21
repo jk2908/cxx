@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.2.2
+## 0.2.4
+
+- Fix README links
+
+## 0.2.3
 
 - Renamed the Vite plugin export from `@jk2908/cxx/vite-plugin-cxx` to `@jk2908/cxx/vite`
 - Added Next usage documentation to the package README

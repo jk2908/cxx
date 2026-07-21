@@ -98,7 +98,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 ## Syntax highlighting
 
-The [`vscode-cxx`](../vscode-cxx) extension provides syntax highlighting for `cxx` and `cxx.tag()` tagged template literals in VS Code. See its [README](../vscode-cxx) for install instructions.
+The [`vscode-cxx`](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) extension provides syntax highlighting for `cxx` and `cxx.tag()` tagged template literals in VS Code. See its [README](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) for install instructions.
 
 ## License
 
