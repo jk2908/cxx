@@ -8,7 +8,6 @@ type LoaderItem = {
 		pluginConfig: {
 			watch?: {
 				root?: string
-				ignore?: string[]
 			}
 		}
 	}
@@ -64,15 +63,11 @@ describe('withCxx', () => {
 		expect(rule.loaders[0]!.options.pluginConfig.watch?.root).toBe('/repo')
 	})
 
-	it('lets an explicit watch config override the turbopack root', () => {
-		const rule = build(
-			{ turbopack: { root: '/repo' } },
-			{ watch: { root: '/app', ignore: ['**/*.test.ts'] } },
-		).turbopack.rules['*.{tsx,jsx,ts,js}'] as { loaders: LoaderItem[] }
-		const watch = rule.loaders[0]!.options.pluginConfig.watch
+	it('lets an explicit watch.root override the turbopack root', () => {
+		const rule = build({ turbopack: { root: '/repo' } }, { watch: { root: '/app' } })
+			.turbopack.rules['*.{tsx,jsx,ts,js}'] as { loaders: LoaderItem[] }
 
-		expect(watch?.root).toBe('/app')
-		expect(watch?.ignore).toEqual(['**/*.test.ts'])
+		expect(rule.loaders[0]!.options.pluginConfig.watch?.root).toBe('/app')
 	})
 
 	it('preserves an existing turbopack rule instead of replacing it', () => {

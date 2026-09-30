@@ -1,14 +1,15 @@
 import type { AsyncSubscription, Event } from '@parcel/watcher'
 import type { NextConfig } from 'next'
 
-import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { Logger } from '../logger.js'
 import type { PluginConfig } from '../types.js'
-import { collect, isENOENT, takeRebuildError, writeTypesForFile } from '../build.js'
+import { collect, refreshFile, seedTypes, writeTypesForFile } from '../build.js'
 import { GENERATED_DIR } from '../config.js'
+import { Logger } from '../logger.js'
+
+const typeLogger = new Logger('cxx')
 
 const nextDir = path.dirname(fileURLToPath(import.meta.url))
 const loader = path.join(nextDir, 'cxx-loader.cjs')
@@ -38,29 +39,10 @@ async function onEvent(event: Event['type'], filePath: string) {
 
 	if (event === 'delete') {
 		await writeTypesForFile(filePath, new Map())
-		logger.info(`updated types from ${filePath}`)
-
-		return
+	} else {
+		await refreshFile(filePath, pluginConfig)
 	}
 
-	let source: string
-
-	try {
-		source = await fs.readFile(filePath, 'utf-8')
-	} catch (err) {
-		if (!isENOENT(err)) throw err
-
-		await writeTypesForFile(filePath, new Map())
-		logger.info(`updated types from ${filePath}`)
-
-		return
-	}
-
-	const tags = source.includes('cxx')
-		? collect(source, filePath, pluginConfig).tags
-		: new Map()
-
-	await writeTypesForFile(filePath, tags)
 	logger.info(`updated types from ${filePath}`)
 }
 
@@ -74,7 +56,6 @@ function ensureWatcher(pluginConfig: PluginConfig, logger: Logger) {
 	if (subscriptionPromise) return
 
 	const root = pluginConfig.watch?.root ?? process.cwd()
-	const ignore = [...DEFAULT_IGNORE, ...(pluginConfig.watch?.ignore ?? [])]
 
 	subscriptionPromise = (async () => {
 		// lazily imported so the native module is only loaded when watching is needed
@@ -98,7 +79,7 @@ function ensureWatcher(pluginConfig: PluginConfig, logger: Logger) {
 					})
 				}
 			},
-			{ ignore },
+			{ ignore: DEFAULT_IGNORE },
 		)
 
 		registerCleanup()
@@ -157,10 +138,6 @@ export function processFile(
 		return { template: source, tags: new Map(), map: null }
 	}
 
-	// surface a duplicate-tag error from a previous background rebuild
-	const priorError = takeRebuildError()
-	if (priorError) throw priorError
-
 	if (process.env['NODE_ENV'] !== 'production') {
 		watchedFiles.set(resolvedFilePath, { pluginConfig, logger })
 		ensureWatcher(pluginConfig, logger)
@@ -178,6 +155,18 @@ const TURBOPACK_GLOB = '*.{tsx,jsx,ts,js}'
 export function withCxx(nextConfig: NextConfig = {}, pluginConfig: PluginConfig = {}) {
 	const watchRoot =
 		pluginConfig.watch?.root ?? nextConfig.turbopack?.root ?? process.cwd()
+
+	// Seed on dev startup only, matching Vite. A production build is covered by the loader, and
+	// `next start` must not scan or write at runtime.
+	if (process.env['NODE_ENV'] !== 'production') {
+		// the app directory, not the whole Turbopack root, so sibling apps in a monorepo do not
+		// leak into this app's types
+		const seedRoot = pluginConfig.watch?.root ?? process.cwd()
+
+		void seedTypes(seedRoot, pluginConfig).catch(err =>
+			typeLogger.error('failed to seed cxx types', err),
+		)
+	}
 
 	const loaderItem = {
 		loader,

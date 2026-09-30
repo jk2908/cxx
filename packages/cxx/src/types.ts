@@ -11,8 +11,6 @@ export type PluginConfig = {
 	watch?: {
 		/** Root used for type-regeneration watching. Defaults to the Vite root or Next Turbopack root. */
 		root?: string
-		/** Extra globs to ignore on top of the defaults. */
-		ignore?: string[]
 	}
 }
 

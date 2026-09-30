@@ -27,14 +27,9 @@ type LogEntry = {
  * Log messages with different severity levels.
  */
 export class Logger {
-	#level: LogLevel
+	#level: LogLevel = defaultLevel
 
-	constructor(
-		level?: LogLevel,
-		public name?: string,
-	) {
-		this.#level = level ?? defaultLevel
-	}
+	constructor(public name?: string) {}
 
 	/**
 	 * Convert a value to an Error instance.

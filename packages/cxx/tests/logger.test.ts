@@ -11,7 +11,9 @@ describe('Logger', () => {
 		const spy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
 		try {
-			new Logger('warn').info('hidden')
+			const logger = new Logger()
+			logger.level = 'warn'
+			logger.info('hidden')
 			expect(spy).not.toHaveBeenCalled()
 		} finally {
 			spy.mockRestore()

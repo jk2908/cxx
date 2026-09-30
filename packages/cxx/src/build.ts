@@ -1,3 +1,5 @@
+import type { Dirent } from 'node:fs'
+
 import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -6,12 +8,13 @@ import { transform } from 'lightningcss'
 import MagicString, { type SourceMap } from 'magic-string'
 
 import type { PluginConfig, Tags } from './types.js'
-import { AUTOGEN_MSG, GENERATED_DIR, PKG_NAME } from './config.js'
+import { AUTOGEN_MSG, GENERATED_DIR, NAME, PKG_NAME } from './config.js'
+import { Logger } from './logger.js'
 import { LruCache } from './lru.js'
 import { pascalise } from './utils.js'
 
-// decode bytes to a string, then stringify into a safe literal. `${bytes}` only
-// works by accident for Buffer; a plain Uint8Array stringifies as `97,123,125`
+const logger = new Logger(NAME)
+
 const decoder = new TextDecoder()
 const encoder = new TextEncoder()
 
@@ -137,6 +140,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 
 	const tags: Tags = new Map()
 	const magic = new MagicString(source)
+
 	let matched = false
 
 	// the regex is global, so reset its cursor before scanning
@@ -258,8 +262,11 @@ const PARTIAL_DIR = path.join(GENERATED_DIR, 'tags')
 const REBUILD_WAIT = 100
 
 let rebuildTimer: ReturnType<typeof setTimeout> | null = null
-let rebuildError: unknown = null
 
+/**
+ * Map a source file to its partial file, named by a hash of the absolute path so each file has
+ * exactly one partial.
+ */
 function partialPath(filePath: string) {
 	return path.join(
 		PARTIAL_DIR,
@@ -267,34 +274,28 @@ function partialPath(filePath: string) {
 	)
 }
 
-/**
- * The partial directory changes whenever any process adds, removes or overwrites a partial, so
- * its mtime tells us whether another writer moved while we were rebuilding.
- */
-async function partialDirMtime() {
-	try {
-		return (await fs.stat(PARTIAL_DIR)).mtimeMs
-	} catch (err) {
-		if (isENOENT(err)) return 0
-		throw err
-	}
+type DuplicateTag = {
+	tag: string
+	files: string[]
 }
 
 /**
  * Read every per-file partial and merge them into one tag map. Partials whose source file no
- * longer exists are pruned so deleted files drop out of the types.
+ * longer exists are pruned, and duplicate tag names are reported with the files that define them.
  */
-async function readPartials() {
+async function readPartials(): Promise<{ tags: Tags; duplicates: DuplicateTag[] }> {
 	let entries: string[]
 
 	try {
 		entries = await fs.readdir(PARTIAL_DIR)
 	} catch (err) {
-		if (isENOENT(err)) return new Map()
+		if (isENOENT(err)) return { tags: new Map(), duplicates: [] }
 		throw err
 	}
 
 	const tags: Tags = new Map()
+	const fileByTag = new Map<string, string>()
+	const duplicates: DuplicateTag[] = []
 
 	for (const entry of entries) {
 		if (!entry.endsWith('.json')) continue
@@ -308,20 +309,35 @@ async function readPartials() {
 			continue
 		}
 
+		let source: string
+
 		try {
-			await fs.access(parsed.file)
+			source = await fs.readFile(parsed.file, 'utf-8')
 		} catch {
 			await fs.rm(partial, { force: true })
 			continue
 		}
 
+		// drop partials for files that no longer use cxx, so their tags do not linger
+		if (!source.includes('cxx')) {
+			await fs.rm(partial, { force: true })
+			continue
+		}
+
 		for (const [name, classes] of Object.entries(parsed.tags)) {
-			if (tags.has(name)) throw new DuplicateTagError(name)
+			const existing = fileByTag.get(name)
+
+			if (existing) {
+				duplicates.push({ tag: name, files: [existing, parsed.file] })
+				continue
+			}
+
+			fileByTag.set(name, parsed.file)
 			tags.set(name, classes)
 		}
 	}
 
-	return tags
+	return { tags, duplicates }
 }
 
 /**
@@ -342,25 +358,29 @@ export function writeTypesForFile(filePath: string, tags: Tags) {
 				JSON.stringify({ file: filePath, tags: Object.fromEntries(tags) }),
 			)
 		}
-	}).then(() => {
-		scheduleRebuild()
 	})
+		.then(() => scheduleRebuild())
+		.catch(err => {
+			logger.error(`failed to write types for ${filePath}`, err)
+		})
 }
 
+/**
+ * Queue a rebuild of `index.d.ts` after a short delay, so a burst of writes only rebuilds once.
+ */
 function scheduleRebuild() {
 	if (rebuildTimer) clearTimeout(rebuildTimer)
 
 	rebuildTimer = setTimeout(() => {
 		rebuildTimer = null
 		flushTypes().catch(err => {
-			rebuildError = err
+			logger.error('failed to generate types', err)
 		})
 	}, REBUILD_WAIT)
 }
 
 /**
- * Rebuild `index.d.ts` from every partial now. If another writer touches a partial mid-rebuild,
- * rebuild once more so the final write reflects every partial. Bounded to avoid spinning.
+ * Rebuild `index.d.ts` from every partial.
  */
 export function flushTypes() {
 	if (rebuildTimer) {
@@ -369,26 +389,96 @@ export function flushTypes() {
 	}
 
 	return enqueueWrite(async () => {
-		let before = await partialDirMtime()
+		const { tags, duplicates } = await readPartials()
+		await writeRenderedTypes(tags)
 
-		for (let attempt = 0; attempt < 3; attempt++) {
-			await writeRenderedTypes(await readPartials())
-
-			const after = await partialDirMtime()
-			if (after === before) return
-
-			before = after
+		for (const duplicate of duplicates) {
+			logger.error(
+				`Tag "${duplicate.tag}" is defined in multiple files: ${duplicate.files.join(', ')}`,
+			)
 		}
 	})
 }
 
+export const SOURCE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx'])
+
+// directories that never contain source we transform
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'out'])
+
 /**
- * Return and clear any error from a background rebuild, so a caller can fail loudly.
+ * Run `fn` for every item, with at most `concurrency` calls in flight.
  */
-export function takeRebuildError() {
-	const err = rebuildError
-	rebuildError = null
-	return err
+async function runWithConcurrency<T>(
+	items: T[],
+	concurrency: number,
+	fn: (item: T) => Promise<void>,
+) {
+	let cursor = 0
+
+	const workers = Array.from(
+		{ length: Math.min(concurrency, items.length) },
+		async () => {
+			while (cursor < items.length) {
+				const index = cursor++
+				await fn(items[index])
+			}
+		},
+	)
+
+	await Promise.all(workers)
+}
+
+/**
+ * Read one file, collect its tags, and persist them. A file with no `cxx` usage has its partial
+ * removed, so stale tags drop out.
+ */
+export async function refreshFile(file: string, config: PluginConfig) {
+	let source: string
+
+	try {
+		source = await fs.readFile(file, 'utf-8')
+	} catch (err) {
+		if (!isENOENT(err)) throw err
+		await writeTypesForFile(file, new Map())
+		return
+	}
+
+	const tags = source.includes('cxx') ? collect(source, file, config).tags : new Map()
+	await writeTypesForFile(file, tags)
+}
+
+/**
+ * Walk every source file under `root` and seed the type surface, so a fresh checkout (and a build
+ * with no edits) has types without waiting for a transform.
+ */
+export async function seedTypes(root: string, config: PluginConfig) {
+	async function scan(dir: string) {
+		let entries: Dirent[]
+
+		try {
+			entries = await fs.readdir(dir, { withFileTypes: true })
+		} catch {
+			return
+		}
+
+		await runWithConcurrency(entries, 8, async entry => {
+			if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) return
+
+			const full = path.join(dir, entry.name)
+
+			if (entry.isDirectory()) {
+				await scan(full)
+				return
+			}
+
+			if (!SOURCE_EXTENSIONS.has(path.extname(entry.name))) return
+
+			await refreshFile(full, config)
+		})
+	}
+
+	await scan(root)
+	await flushTypes()
 }
 
 /**
@@ -396,7 +486,7 @@ export function takeRebuildError() {
  */
 export function tagsToType(tags: Tags) {
 	return [...tags]
-		.toSorted(([a], [b]) => a.localeCompare(b))
+		.toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 		.map(([tag, classes]) => {
 			const union =
 				classes.length > 0

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.4
+
+- Removed the `watch.ignore` plugin option; use Vite's own `server.watch.ignored` to narrow what Vite watches
+- Seeded the Next type surface on dev startup, matching Vite
+- Made type generation survive failures: a write error is logged, duplicate tags name the files that define them, and unrelated types still update
+- Pruned partials for files that no longer use `cxx`, so removed tags do not linger
+- Simplified the rebuild by dropping the partial-directory re-check, the exit flush and the debounce batcher, and cached Vite's realpath lookups
+
 ## 0.3.3
 
 - Re-checked the partials directory after a rebuild, so a rebuild cannot land over a concurrent worker's write
