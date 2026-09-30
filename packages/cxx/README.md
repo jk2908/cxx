@@ -98,7 +98,7 @@ Use the Next integration when you want `cxx` transforms and generated class-key 
 
 `watch.root` sets the tree used for type-regeneration watching. It defaults to the Vite root, and to the Turbopack root in Next (falling back to `process.cwd()`).
 
-`watch.ignore` adds extra globs on top of the built-in ignores (`node_modules`, `.next`, `.cxx`, `.git`). In Vite the globs are added to `server.watch.ignored`.
+`watch.ignore` adds extra globs on top of the built-in ignores (`node_modules`, `.next`, `.cxx`, `.git`). In Next they are added to the cxx watcher. In Vite they only stop cxx from regenerating types for matching files; use Vite's own `server.watch.ignored` to reduce what Vite watches, since that also affects HMR.
 
 ```ts
 export default withCxx(nextConfig, {

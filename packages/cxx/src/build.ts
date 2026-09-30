@@ -5,7 +5,7 @@ import path from 'node:path'
 import { transform } from 'lightningcss'
 import MagicString, { type SourceMap } from 'magic-string'
 
-import type { BuildContext, PluginConfig, Tags } from './types.js'
+import type { PluginConfig, Tags } from './types.js'
 import { AUTOGEN_MSG, GENERATED_DIR, PKG_NAME } from './config.js'
 import { LruCache } from './lru.js'
 import { pascalise } from './utils.js'
@@ -13,6 +13,7 @@ import { pascalise } from './utils.js'
 // decode bytes to a string, then stringify into a safe literal. `${bytes}` only
 // works by accident for Buffer; a plain Uint8Array stringifies as `97,123,125`
 const decoder = new TextDecoder()
+const encoder = new TextEncoder()
 
 /**
  * LRU cache of `collect` results by file id + last seen source + config so watcher and transform
@@ -27,14 +28,8 @@ const collectCache = new LruCache<{
 }>()
 
 /**
- * LRU cache for file content. Stores the last written content per file path so `maybeWrite`
- * can skip disk i/o when nothing has changed.
- */
-const fileCache = new LruCache<string>()
-
-/**
- * Serialises type file writes inside a single process so overlapping `writeTypes` calls can't
- * interleave or land out of order.
+ * Serialises type file writes inside a single process so overlapping writes can't interleave or
+ * land out of order.
  */
 let writeChain: Promise<void> = Promise.resolve()
 
@@ -46,14 +41,20 @@ export function isENOENT(err: unknown) {
 }
 
 /**
- * Write a file by first writing to a unique temporary file and then renaming it into place, so
- * concurrent writers (e.g. Turbopack loader workers) never observe a partial file.
+ * Write a file by writing to a unique temporary file and renaming it into place, so concurrent
+ * writers never observe a partial file. The temp file is cleaned up if the rename fails.
  */
 async function writeFileAtomic(filePath: string, content: string) {
 	const tmp = `${filePath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
 
 	await fs.writeFile(tmp, content)
-	await fs.rename(tmp, filePath)
+
+	try {
+		await fs.rename(tmp, filePath)
+	} catch (err) {
+		await fs.rm(tmp, { force: true })
+		throw err
+	}
 }
 
 /**
@@ -75,26 +76,17 @@ function enqueueWrite<T>(task: () => Promise<T>) {
 }
 
 /**
- * Write a file only if the content actually differs from what is already on disk.
+ * Write a file only if the content differs from what is already on disk, so watchers are not woken
+ * by a needless mtime change.
  */
 export async function maybeWrite(filePath: string, content: string) {
-	const cached = fileCache.get(filePath)
-	// fast path: already wrote this exact content in this process
-	if (cached === content) return false
-
-	// verify against disk on a cold start (or when the cache is stale) so we
-	// don't needlessly bump the mtime and invalidate downstream watchers
 	try {
-		if ((await fs.readFile(filePath, 'utf-8')) === content) {
-			fileCache.set(filePath, content)
-			return false
-		}
+		if ((await fs.readFile(filePath, 'utf-8')) === content) return false
 	} catch (err) {
 		if (!isENOENT(err)) throw err
 	}
 
 	await writeFileAtomic(filePath, content)
-	fileCache.set(filePath, content)
 
 	return true
 }
@@ -159,19 +151,27 @@ export function collect(source: string, id: string, config: PluginConfig) {
 		// capture groups: export, three bindings, plain css, (quote), tag, tagged css
 		const [, exp, varOne, varTwo, varThree, plainCss, , tag, taggedCss] = match
 		const css = plainCss ?? taggedCss
+		const matchIndex = match.index
 
-		// compile the CSS to minified CSS Modules
-		const { code, exports = {} } = transform({
-			minify: true,
-			cssModules: true,
-			filename: id,
-			code: new TextEncoder().encode(css),
-		})
+		// compile the CSS to minified CSS Modules, reporting the source line on failure
+		const { code, exports: classExports = {} } = (() => {
+			try {
+				return transform({
+					minify: true,
+					cssModules: true,
+					filename: id,
+					code: encoder.encode(css),
+				})
+			} catch (err) {
+				const line = source.slice(0, matchIndex).split('\n').length
+				throw new Error(`Failed to compile cxx CSS at ${id}:${line}`, { cause: err })
+			}
+		})()
 
 		const href = hashCss(code)
 		// map each class name to its generated (scoped) name
 		const styles = Object.fromEntries(
-			Object.entries(exports).map(([k, v]) => [k, v.name]),
+			Object.entries(classExports).map(([k, v]) => [k, v.name]),
 		)
 
 		if (tag) {
@@ -205,7 +205,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 		}
 
 		// swap the template for the generated declarations, keeping the export keyword
-		magic.overwrite(match.index, match.index + match[0].length, statements.join('\n'))
+		magic.overwrite(matchIndex, matchIndex + match[0].length, statements.join('\n'))
 	}
 
 	const template = magic.toString()
@@ -243,10 +243,7 @@ async function writeRenderedTypes(tags: Tags) {
 	const filePath = path.join(GENERATED_DIR, 'index.d.ts')
 
 	if (!tags.size) {
-		// `force` makes this a no-op when the file is already absent
 		await fs.rm(filePath, { force: true })
-		fileCache.delete(filePath)
-
 		return
 	}
 
@@ -254,14 +251,14 @@ async function writeRenderedTypes(tags: Tags) {
 	await maybeWrite(filePath, renderTypes(tags))
 }
 
-/**
- * Write the generated declaration file for the current set of collected tags.
- */
-export function writeTypes(tags: Tags) {
-	return enqueueWrite(() => writeRenderedTypes(tags))
-}
-
 const PARTIAL_DIR = path.join(GENERATED_DIR, 'tags')
+
+// wait this long after the last file before rebuilding, so a burst of files
+// only re-reads the partials once
+const REBUILD_WAIT = 100
+
+let rebuildTimer: ReturnType<typeof setTimeout> | null = null
+let rebuildError: unknown = null
 
 function partialPath(filePath: string) {
 	return path.join(
@@ -271,8 +268,8 @@ function partialPath(filePath: string) {
 }
 
 /**
- * Read every per-file partial written by the Next loader workers and merge them into one tag map.
- * Partials whose source file no longer exists are pruned so deleted files drop out of the types.
+ * Read every per-file partial and merge them into one tag map. Partials whose source file no
+ * longer exists are pruned so deleted files drop out of the types.
  */
 async function readPartials() {
 	let entries: string[]
@@ -315,8 +312,8 @@ async function readPartials() {
 }
 
 /**
- * Next-specific write path. Turbopack spreads loaders across worker processes, so each worker
- * persists its own per-file partial and rebuilds the shared declaration file from all of them.
+ * Persist one file's tags to its own partial, then rebuild the shared types soon. Rebuilding is
+ * debounced and serialised, so a large build does not re-read every partial per file.
  */
 export function writeTypesForFile(filePath: string, tags: Tags) {
 	return enqueueWrite(async () => {
@@ -332,9 +329,43 @@ export function writeTypesForFile(filePath: string, tags: Tags) {
 				JSON.stringify({ file: filePath, tags: Object.fromEntries(tags) }),
 			)
 		}
+	}).then(() => {
+		scheduleRebuild()
+	})
+}
 
+function scheduleRebuild() {
+	if (rebuildTimer) clearTimeout(rebuildTimer)
+
+	rebuildTimer = setTimeout(() => {
+		rebuildTimer = null
+		flushTypes().catch(err => {
+			rebuildError = err
+		})
+	}, REBUILD_WAIT)
+}
+
+/**
+ * Rebuild `index.d.ts` from every partial now.
+ */
+export function flushTypes() {
+	if (rebuildTimer) {
+		clearTimeout(rebuildTimer)
+		rebuildTimer = null
+	}
+
+	return enqueueWrite(async () => {
 		await writeRenderedTypes(await readPartials())
 	})
+}
+
+/**
+ * Return and clear any error from a background rebuild, so a caller can fail loudly.
+ */
+export function takeRebuildError() {
+	const err = rebuildError
+	rebuildError = null
+	return err
 }
 
 /**
@@ -342,6 +373,7 @@ export function writeTypesForFile(filePath: string, tags: Tags) {
  */
 export function tagsToType(tags: Tags) {
 	return [...tags]
+		.toSorted(([a], [b]) => a.localeCompare(b))
 		.map(([tag, classes]) => {
 			const union =
 				classes.length > 0
@@ -354,20 +386,4 @@ export function tagsToType(tags: Tags) {
 			return `\texport type ${tag} = ${union}`
 		})
 		.join('\n')
-}
-
-/**
- * Merge per-file tag maps into one application-wide tag map.
- */
-export function flattenTags(tagsByFile: BuildContext['tagsByFile']) {
-	const tags = new Map<string, string[]>()
-
-	for (const fileTags of tagsByFile.values()) {
-		for (const [name, classes] of fileTags) {
-			if (tags.has(name)) throw new DuplicateTagError(name)
-			tags.set(name, classes)
-		}
-	}
-
-	return tags
 }

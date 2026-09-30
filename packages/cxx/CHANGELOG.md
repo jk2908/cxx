@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.2
+
+- Persisted per-file type partials in Vite too, seeded with an initial scan, so a fresh checkout has types before any edit
+- Debounced and coalesced the type rebuild, so a large build no longer re-reads every partial per file
+- Skipped `cxx`-free files and `node_modules` in the Next loader
+- Surfaced duplicate tag errors instead of only logging them
+- Reported the source line when CSS fails to compile, and passed the source map through the Next loader
+- Sorted generated tag types by name for stable output
+- Fixed the batcher `flush` and hardened the batcher and atomic writes
+- Stopped `watch.ignore` from disabling Vite HMR
+
 ## 0.3.1
 
 - Removed a stale npm `package-lock.json` that produced false Dependabot alerts

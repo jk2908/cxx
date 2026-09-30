@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { maybeWrite, writeTypesForFile } from '../src/build.js'
+import { flushTypes, maybeWrite, writeTypesForFile } from '../src/build.js'
 
 describe('maybeWrite', () => {
 	let dir: string
@@ -17,12 +17,11 @@ describe('maybeWrite', () => {
 		await fs.rm(dir, { recursive: true, force: true })
 	})
 
-	it('does not rewrite identical content when the in-memory cache is cold', async () => {
+	it('does not rewrite content that already matches the disk', async () => {
 		const file = path.join(dir, 'index.d.ts')
 
 		await fs.writeFile(file, 'same')
 
-		// first call has no cache entry, but the file on disk already matches
 		expect(await maybeWrite(file, 'same')).toBe(false)
 		expect(await maybeWrite(file, 'same')).toBe(false)
 	})
@@ -60,6 +59,7 @@ describe('writeTypesForFile', () => {
 
 		await writeTypesForFile(fileA, new Map([['AClasses', ['a']]]))
 		await writeTypesForFile(fileB, new Map([['BClasses', ['b']]]))
+		await flushTypes()
 
 		const typeFile = path.join(dir, '.cxx', 'index.d.ts')
 		const merged = await fs.readFile(typeFile, 'utf-8')
@@ -70,6 +70,7 @@ describe('writeTypesForFile', () => {
 		// removing a source file drops its tags from the merged surface
 		await fs.rm(fileA, { force: true })
 		await writeTypesForFile(fileB, new Map([['BClasses', ['b']]]))
+		await flushTypes()
 
 		const pruned = await fs.readFile(typeFile, 'utf-8')
 

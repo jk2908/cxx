@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import type { Logger } from '../logger.js'
 import type { PluginConfig } from '../types.js'
-import { collect, isENOENT, writeTypesForFile } from '../build.js'
+import { collect, isENOENT, takeRebuildError, writeTypesForFile } from '../build.js'
 import { GENERATED_DIR } from '../config.js'
 
 const nextDir = path.dirname(fileURLToPath(import.meta.url))
@@ -56,7 +56,9 @@ async function onEvent(event: Event['type'], filePath: string) {
 		return
 	}
 
-	const { tags } = collect(source, filePath, pluginConfig)
+	const tags = source.includes('cxx')
+		? collect(source, filePath, pluginConfig).tags
+		: new Map()
 
 	await writeTypesForFile(filePath, tags)
 	logger.info(`updated types from ${filePath}`)
@@ -150,6 +152,15 @@ export function processFile(
 ) {
 	const resolvedFilePath = path.resolve(filePath)
 
+	// skip files that cannot contain a template, including node_modules
+	if (!source.includes('cxx') || /[\\/]node_modules[\\/]/.test(resolvedFilePath)) {
+		return { template: source, tags: new Map(), map: null }
+	}
+
+	// surface a duplicate-tag error from a previous background rebuild
+	const priorError = takeRebuildError()
+	if (priorError) throw priorError
+
 	if (process.env['NODE_ENV'] !== 'production') {
 		watchedFiles.set(resolvedFilePath, { pluginConfig, logger })
 		ensureWatcher(pluginConfig, logger)
@@ -157,9 +168,7 @@ export function processFile(
 
 	const result = collect(source, resolvedFilePath, pluginConfig)
 
-	void writeTypesForFile(resolvedFilePath, result.tags).catch(err => {
-		logger.error(`failed to write types for ${resolvedFilePath}`, err)
-	})
+	void writeTypesForFile(resolvedFilePath, result.tags)
 
 	return result
 }

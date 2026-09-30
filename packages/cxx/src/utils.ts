@@ -33,15 +33,14 @@ export function createBatcher<K, V>(
 	const pending = new Map<K, V>()
 	// waits for a burst of changes to settle before running
 	let timer: ReturnType<typeof setTimeout> | null = null
-	// true while a batch is running, so we never start a second one
-	let running = false
+	// the run in progress, so `flush` can wait for it and we never start a second
+	let current: Promise<void> | null = null
 
-	async function drain() {
+	function drain() {
 		// a run is already going, so let it pick up the new work
-		if (running) return
-		running = true
+		if (current) return current
 
-		try {
+		const run = (async () => {
 			// keep looping while there is work, including work added during a flush
 			while (pending.size > 0) {
 				// snapshot the queued work
@@ -51,10 +50,19 @@ export function createBatcher<K, V>(
 
 				await flush(batch)
 			}
-		} finally {
-			// always allow the next run, even if flush threw
-			running = false
-		}
+		})()
+
+		current = run
+		run.then(
+			() => {
+				if (current === run) current = null
+			},
+			() => {
+				if (current === run) current = null
+			},
+		)
+
+		return run
 	}
 
 	function schedule() {
@@ -65,8 +73,8 @@ export function createBatcher<K, V>(
 		timer = setTimeout(() => {
 			// the timer has fired, so drop the stale handle
 			timer = null
-			// start the run without waiting for it (this is a timer callback)
-			void drain()
+			// the flush callback handles its own errors, so just start the run
+			void drain().catch(() => {})
 		}, wait)
 	}
 

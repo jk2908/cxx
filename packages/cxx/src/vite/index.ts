@@ -4,8 +4,14 @@ import path from 'node:path'
 
 import { type Plugin, type ResolvedConfig, type ViteDevServer } from 'vite'
 
-import type { BuildContext, PluginConfig } from '../types.js'
-import { collect, flattenTags, isENOENT, writeTypes } from '../build.js'
+import type { PluginConfig } from '../types.js'
+import {
+	collect,
+	flushTypes,
+	isENOENT,
+	takeRebuildError,
+	writeTypesForFile,
+} from '../build.js'
 import { GENERATED_DIR } from '../config.js'
 import { Logger } from '../logger.js'
 import { createBatcher } from '../utils.js'
@@ -18,15 +24,23 @@ function normaliseWatchPath(p: string) {
 	return p.replace(/\\/g, '/')
 }
 
-export default function cxx(pluginConfig: PluginConfig = {}) {
-	const buildContext = {
-		tagsByFile: new Map(),
-	} satisfies BuildContext
+// small glob matcher for the ignore patterns we support (`**`, `*`, `?`)
+function globToRegExp(glob: string) {
+	const pattern = glob
+		.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+		.replace(/\*\*(\/|$)/g, '.*$1')
+		.replace(/\*/g, '[^/]*')
+		.replace(/\?/g, '[^/]')
 
+	return new RegExp(`^${pattern}$`)
+}
+
+export default function cxx(pluginConfig: PluginConfig = {}) {
 	const logger = new Logger()
 
 	// resolved from Vite's root in `configResolved`, not from `process.cwd()`
 	let watchRoot = normaliseWatchPath(process.cwd())
+	const ignored = (pluginConfig.watch?.ignore ?? []).map(globToRegExp)
 
 	function resolveWatchFile(filePath: string) {
 		const absolutePath = path.resolve(watchRoot, filePath)
@@ -50,7 +64,8 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		if (
 			resolvedPath.startsWith(`${watchRoot}/`) &&
 			!resolvedPath.includes(`/${GENERATED_DIR}/`) &&
-			ACCEPTED_EXTENSIONS.has(path.extname(resolvedPath))
+			ACCEPTED_EXTENSIONS.has(path.extname(resolvedPath)) &&
+			!ignored.some(regexp => regexp.test(resolvedPath))
 		) {
 			return resolvedPath
 		}
@@ -58,47 +73,53 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		return null
 	}
 
-	async function onEvent(event: WatchEvent, file: string) {
-		const hadTags = buildContext.tagsByFile.has(file)
-
-		if (event === 'unlink') {
-			if (!hadTags) return
-
-			buildContext.tagsByFile.delete(file)
-			await writeTypes(flattenTags(buildContext.tagsByFile))
-			logger.info(`updated types from ${file}`)
-
-			return
-		}
-
+	async function recordFile(file: string) {
 		let source: string
 
 		try {
 			source = await fs.readFile(file, 'utf-8')
 		} catch (err) {
 			if (!isENOENT(err)) throw err
-			if (!hadTags) return
-
-			buildContext.tagsByFile.delete(file)
-			await writeTypes(flattenTags(buildContext.tagsByFile))
-			logger.info(`updated types from ${file}`)
-
+			await writeTypesForFile(file, new Map())
 			return
 		}
 
-		const { tags } = collect(source, file, pluginConfig)
-		const hasTags = tags.size > 0
+		const tags = source.includes('cxx')
+			? collect(source, file, pluginConfig).tags
+			: new Map()
+		await writeTypesForFile(file, tags)
+	}
 
-		if (hasTags) {
-			buildContext.tagsByFile.set(file, tags)
-		} else {
-			buildContext.tagsByFile.delete(file)
+	// seed the type surface from the source tree, so a fresh checkout has types
+	// before any file is transformed or edited
+	async function scan(dir: string) {
+		let entries
+
+		try {
+			entries = await fs.readdir(dir, { withFileTypes: true })
+		} catch {
+			return
 		}
 
-		if (!hadTags && !hasTags) return
+		await Promise.all(
+			entries.map(async entry => {
+				if (entry.name.startsWith('.') || entry.name === 'node_modules') return
 
-		await writeTypes(flattenTags(buildContext.tagsByFile))
-		logger.info(`updated types from ${file}`)
+				const full = path.join(dir, entry.name)
+
+				if (entry.isDirectory()) {
+					await scan(full)
+					return
+				}
+
+				if (!ACCEPTED_EXTENSIONS.has(path.extname(entry.name))) return
+
+				const resolved = resolveWatchFile(full)
+				if (ignored.some(regexp => regexp.test(resolved))) return
+
+				await recordFile(resolved)
+			}),
+		)
 	}
 
 	// collect change events that arrive close together and handle each file once.
@@ -107,7 +128,13 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 	const queue = createBatcher<string, WatchEvent>(75, async batch => {
 		for (const [file, event] of batch) {
 			try {
-				await onEvent(event, file)
+				if (event === 'unlink') {
+					await writeTypesForFile(file, new Map())
+				} else {
+					await recordFile(file)
+				}
+
+				logger.info(`updated types from ${file}`)
 			} catch (err) {
 				logger.error(`failed to update types from ${file}`, err)
 			}
@@ -117,19 +144,6 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 	return {
 		name: 'cxx',
 		enforce: 'pre',
-		config() {
-			const ignore = pluginConfig.watch?.ignore
-			if (!ignore?.length) return null
-
-			// Vite concatenates `server.watch.ignored`, so only return the additions
-			return {
-				server: {
-					watch: {
-						ignored: ignore,
-					},
-				},
-			}
-		},
 		configResolved(config: ResolvedConfig) {
 			const root = pluginConfig.watch?.root ?? config.root
 
@@ -141,22 +155,19 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		},
 		transform(code, id) {
 			if (id.startsWith('\0') || id.includes('/node_modules/')) return null
+
 			// cheap bail-out before running the regex/lightningcss on every module
 			if (!code.includes('cxx')) return null
 
 			const cleanId = id.split('?')[0]
+
 			if (!ACCEPTED_EXTENSIONS.has(path.extname(cleanId))) return null
 
 			const { template, tags, map } = collect(code, cleanId, pluginConfig)
+
 			if (template === code) return null
 
-			const resolved = resolveWatchFile(cleanId)
-
-			if (tags.size) {
-				buildContext.tagsByFile.set(resolved, tags)
-			} else {
-				buildContext.tagsByFile.delete(resolved)
-			}
+			void writeTypesForFile(resolveWatchFile(cleanId), tags)
 
 			return {
 				code: template,
@@ -179,9 +190,17 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 					const file = watchedFile(p)
 					if (file) queue.add(file, 'unlink')
 				})
+
+			void scan(watchRoot)
+				.then(() => flushTypes())
+				.then(() => {
+					const err = takeRebuildError()
+					if (err) logger.error('failed to generate types', err)
+				})
+				.catch(err => logger.error('failed to scan for cxx templates', err))
 		},
 		async writeBundle() {
-			await writeTypes(flattenTags(buildContext.tagsByFile))
+			await flushTypes()
 		},
 	} satisfies Plugin
 }

@@ -16,10 +16,6 @@ export type PluginConfig = {
 	}
 }
 
-export type BuildContext = {
-	tagsByFile: Map<string, Tags>
-}
-
 export type Tag = <ClassName extends string = string>(
 	name: string,
 ) => (_: TemplateStringsArray) => Result<ClassName>

@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-	collect,
-	DuplicateTagError,
-	flattenTags,
-	InvalidTagError,
-	tagsToType,
-} from '../src/build.js'
+import { collect, DuplicateTagError, InvalidTagError, tagsToType } from '../src/build.js'
 
 let counter = 0
 // collect caches by id+source, NOT config. Use a fresh id per case so the
@@ -185,36 +179,16 @@ describe('collect — emitted code safety', () => {
 	})
 })
 
-describe('flattenTags', () => {
-	it('merges per-file tag maps into a single map', () => {
-		const a = new Map([['FooClasses', ['one']]])
-		const b = new Map([['BarClasses', ['two', 'three']]])
-
-		const flat = flattenTags(
+describe('tagsToType ordering', () => {
+	it('sorts tags by name so the output is stable', () => {
+		const out = tagsToType(
 			new Map([
-				['/a.tsx', a],
-				['/b.tsx', b],
+				['B', ['y']],
+				['A', ['x']],
 			]),
 		)
 
-		expect([...flat.entries()].toSorted()).toEqual([
-			['BarClasses', ['two', 'three']],
-			['FooClasses', ['one']],
-		])
-	})
-
-	it('rejects duplicate tag names across files', () => {
-		const a = new Map([['Tag', ['x']]])
-		const b = new Map([['Tag', ['y']]])
-
-		expect(() =>
-			flattenTags(
-				new Map([
-					['/a', a],
-					['/b', b],
-				]),
-			),
-		).toThrow(DuplicateTagError)
+		expect(out.indexOf('export type A')).toBeLessThan(out.indexOf('export type B'))
 	})
 })
 
