@@ -8,6 +8,8 @@ const LEVELS = {
 
 export type LogLevel = keyof typeof LEVELS
 
+const defaultLevel: LogLevel = process.env['NODE_ENV'] === 'production' ? 'error' : 'info'
+
 type LogEntry = {
 	ts: number
 	level: LogLevel
@@ -22,37 +24,27 @@ type LogEntry = {
 }
 
 /**
- * Log messages with different severity levels
+ * Log messages with different severity levels.
  */
 export class Logger {
-	static #defaultLevel: LogLevel = 'info'
-
-	#level?: LogLevel
+	#level: LogLevel
 
 	constructor(
 		level?: LogLevel,
 		public name?: string,
 	) {
-		this.#level = level
-	}
-
-	static set defaultLevel(level: LogLevel) {
-		Logger.#defaultLevel = level
-	}
-
-	static get defaultLevel() {
-		return Logger.#defaultLevel
+		this.#level = level ?? defaultLevel
 	}
 
 	/**
-	 * Convert a value to an Error instance
+	 * Convert a value to an Error instance.
 	 */
 	static toError(err: unknown) {
 		return err instanceof Error ? err : new Error(String(err), { cause: err })
 	}
 
 	/**
-	 * Stringify the error for logging
+	 * Stringify the error for logging.
 	 */
 	static print(err: unknown) {
 		if (err instanceof Error) {
@@ -79,11 +71,11 @@ export class Logger {
 	}
 
 	get level() {
-		return this.#level ?? Logger.#defaultLevel
+		return this.#level
 	}
 
 	/**
-	 * Log a message with a specific level
+	 * Log a message with a specific level.
 	 */
 	log(level: LogLevel, message: string, error?: Error) {
 		if (LEVELS[level] < LEVELS[this.level]) return
@@ -115,35 +107,35 @@ export class Logger {
 	}
 
 	/**
-	 * Log a debug message
+	 * Log a debug message.
 	 */
 	debug(...messages: string[]) {
 		this.log('debug', messages.join(' '))
 	}
 
 	/**
-	 * Log an info message
+	 * Log an info message.
 	 */
 	info(...messages: string[]) {
 		this.log('info', messages.join(' '))
 	}
 
 	/**
-	 * Log a warning message
+	 * Log a warning message.
 	 */
 	warn(...messages: string[]) {
 		this.log('warn', messages.join(' '))
 	}
 
 	/**
-	 * Log an error message
+	 * Log an error message.
 	 */
 	error(message: string, error?: unknown) {
 		this.log('error', message, error === undefined ? undefined : Logger.toError(error))
 	}
 
 	/**
-	 * Log a fatal error message
+	 * Log a fatal error message.
 	 */
 	fatal(message: string, error?: unknown) {
 		this.log('fatal', message, error === undefined ? undefined : Logger.toError(error))

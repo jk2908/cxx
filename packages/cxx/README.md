@@ -92,7 +92,23 @@ const nextConfig = {}
 export default withCxx(nextConfig, { typeSuffix: 'Classes' })
 ```
 
-Use the Next integration when you want `cxx` transforms and generated class-key types inside a Next app. 
+Use the Next integration when you want `cxx` transforms and generated class-key types inside a Next app.
+
+## Watch options
+
+`watch.root` sets the tree used for type-regeneration watching. It defaults to the Vite root, and to the Turbopack root in Next (falling back to `process.cwd()`).
+
+`watch.ignore` adds extra globs on top of the built-in ignores (`node_modules`, `.next`, `.cxx`, `.git`). In Vite the globs are added to `server.watch.ignored`.
+
+```ts
+export default withCxx(nextConfig, {
+	typeSuffix: 'Classes',
+	watch: {
+		root: '../../',
+		ignore: ['**/*.stories.tsx'],
+	},
+})
+```
 
 See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 

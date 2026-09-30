@@ -11,6 +11,14 @@ const nextConfig = {
 	turbopack: {
 		root: turbopackRoot,
 	},
+	typescript: {
+		// Next's built-in tsc step stalls unpredictably on Vercel; we run an
+		// explicit tsgo gate in the build script instead so this is redundant.
+		ignoreBuildErrors: true,
+	},
+	eslint: {
+		ignoreDuringBuilds: true,
+	},
 }
 
 export default withCxx(nextConfig)

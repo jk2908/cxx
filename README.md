@@ -1,6 +1,6 @@
 # cxx
 
-Monorepo for `cxx` — build-time CSS template tag utilities for React 19.
+Monorepo for `cxx` - build-time CSS template tag utilities for React 19.
 
 ## Packages
 

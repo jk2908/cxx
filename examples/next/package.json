@@ -2,26 +2,26 @@
   "name": "next",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "next lint"
+    "type-check": "tsgo --noEmit",
+    "build": "tsgo --noEmit && next build --turbopack",
+    "start": "next start"
   },
   "dependencies": {
     "@jk2908/cxx": "workspace:*",
-    "next": "^15.0.0-canary.128",
-    "react": "^19.0.0-beta-26f2496093-20240514",
-    "react-dom": "^19.0.0-beta-26f2496093-20240514"
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "latest",
-    "@types/react-dom": "latest"
-  },
-  "overrides": {
-    "@types/react": "npm:types-react@rc",
-    "@types/react-dom": "npm:types-react-dom@rc"
+    "@types/node": "^22",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2"
   }
 }

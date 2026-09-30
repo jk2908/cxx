@@ -1,5 +1,3 @@
-import type { LogLevel } from './logger.js'
-
 export type Result<ClassName extends string = string> = readonly [
 	css: string,
 	classes: Readonly<Record<ClassName, string>>,
@@ -10,8 +8,11 @@ export type Tags = Map<string, string[]>
 
 export type PluginConfig = {
 	typeSuffix?: string | false
-	logger?: {
-		level?: LogLevel
+	watch?: {
+		// root used for type-regeneration watching; defaults to the Vite root / Next turbopack root
+		root?: string
+		// extra globs to ignore on top of the defaults
+		ignore?: string[]
 	}
 }
 

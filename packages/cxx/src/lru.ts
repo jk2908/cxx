@@ -14,7 +14,7 @@ export class LruCache<T> {
 
 	/**
 	 * Retrieve a cached value and promote it to most-recently-used so it won't
-	 * be evicted while still actively referenced
+	 * be evicted while still actively referenced.
 	 */
 	get(key: string) {
 		const cached = this.#cache.get(key)
@@ -27,7 +27,7 @@ export class LruCache<T> {
 	 * Promote an existing cache entry to most-recently-used by deleting and
 	 * re-inserting it, which moves it to the end of the Map's iteration
 	 * order. If the cache is at capacity, evict the least recently used
-	 * entry (front) before inserting
+	 * entry (front) before inserting.
 	 */
 	set(key: string, value: T) {
 		// drop any existing entry

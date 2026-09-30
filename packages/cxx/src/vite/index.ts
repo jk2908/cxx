@@ -2,15 +2,17 @@ import { realpathSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { type Plugin, type ViteDevServer } from 'vite'
+import { type Plugin, type ResolvedConfig, type ViteDevServer } from 'vite'
 
 import type { BuildContext, PluginConfig } from '../types.js'
+import { collect, flattenTags, isENOENT, writeTypes } from '../build.js'
 import { GENERATED_DIR } from '../config.js'
-import { collect, flattenTags, isENOENT, writeTypes } from '../index.js'
 import { Logger } from '../logger.js'
-import { debounce } from '../utils.js'
+import { createBatcher } from '../utils.js'
 
 const ACCEPTED_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx'])
+
+type WatchEvent = 'add' | 'change' | 'unlink'
 
 function normaliseWatchPath(p: string) {
 	return p.replace(/\\/g, '/')
@@ -21,23 +23,11 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		tagsByFile: new Map(),
 	} satisfies BuildContext
 
-	const logger = new Logger(
-		(pluginConfig?.logger?.level ?? process.env.NODE_ENV === 'production')
-			? 'error'
-			: 'debug',
-	)
+	const logger = new Logger()
 
-	// write generated files into a hidden folder at the project root
-	// keep the generated surface out of src
-	const watchRoot = normaliseWatchPath(realpathSync.native(process.cwd()))
-	const watchedRoots = [`${watchRoot}/`]
+	// resolved from Vite's root in `configResolved`, not from `process.cwd()`
+	let watchRoot = normaliseWatchPath(process.cwd())
 
-	let rebuildRunning = false
-	let rebuildQueued = false
-
-	// watcher events can arrive through symlinked paths like /var while cwd has
-	// already resolved to /private/var, so canonicalise the parent dir once and
-	// reattach the file name for stable prefix checks
 	function resolveWatchFile(filePath: string) {
 		const absolutePath = path.resolve(watchRoot, filePath)
 		const parentPath = path.dirname(absolutePath)
@@ -53,101 +43,142 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		}
 	}
 
-	function watchedFile(filePath: string) {
+	// returns the canonical, watchable path or null when the file is irrelevant
+	function watchedFile(filePath: string): string | null {
 		const resolvedPath = resolveWatchFile(filePath)
 
-		return (
-			watchedRoots.some(root => resolvedPath.startsWith(root)) &&
+		if (
+			resolvedPath.startsWith(`${watchRoot}/`) &&
 			!resolvedPath.includes(`/${GENERATED_DIR}/`) &&
 			ACCEPTED_EXTENSIONS.has(path.extname(resolvedPath))
-		)
-	}
-
-	const rebuild = debounce((event: 'add' | 'change' | 'unlink', filePath: string) => {
-		function queue() {
-			void (async () => {
-				// collapse bursts of file events into one active rebuild plus a single
-				// queued rerun when changes land mid-build
-				if (rebuildRunning) {
-					rebuildQueued = true
-					return
-				}
-
-				rebuildRunning = true
-
-				do {
-					rebuildQueued = false
-
-					try {
-						const hadTags = buildContext.tagsByFile.has(file)
-						let hasTags = false
-
-						if (event === 'unlink') {
-							buildContext.tagsByFile.delete(file)
-						} else {
-							const source = await fs.readFile(file, 'utf-8')
-							const { tags } = collect(source, file, pluginConfig)
-
-							hasTags = tags.size > 0
-
-							if (hasTags) {
-								buildContext.tagsByFile.set(file, tags)
-							} else {
-								buildContext.tagsByFile.delete(file)
-							}
-						}
-
-						if (!hadTags && !hasTags) continue
-
-						await writeTypes(flattenTags(buildContext.tagsByFile))
-						logger.info(`updated types from ${file}`)
-					} catch (err) {
-						if (isENOENT(err)) {
-							if (!buildContext.tagsByFile.has(file)) continue
-
-							buildContext.tagsByFile.delete(file)
-							await writeTypes(flattenTags(buildContext.tagsByFile))
-
-							logger.info(`updated types from ${file}`)
-
-							continue
-						}
-
-						logger.error(`failed to update types from ${file}`, err)
-					}
-				} while (rebuildQueued)
-
-				rebuildRunning = false
-			})()
+		) {
+			return resolvedPath
 		}
 
-		// ignore anything outside the watched content dirs
-		if (!watchedFile(filePath)) return
+		return null
+	}
 
-		const file = resolveWatchFile(filePath)
-		queue()
-	}, 75)
+	async function onEvent(event: WatchEvent, file: string) {
+		const hadTags = buildContext.tagsByFile.has(file)
+
+		if (event === 'unlink') {
+			if (!hadTags) return
+
+			buildContext.tagsByFile.delete(file)
+			await writeTypes(flattenTags(buildContext.tagsByFile))
+			logger.info(`updated types from ${file}`)
+
+			return
+		}
+
+		let source: string
+
+		try {
+			source = await fs.readFile(file, 'utf-8')
+		} catch (err) {
+			if (!isENOENT(err)) throw err
+			if (!hadTags) return
+
+			buildContext.tagsByFile.delete(file)
+			await writeTypes(flattenTags(buildContext.tagsByFile))
+			logger.info(`updated types from ${file}`)
+
+			return
+		}
+
+		const { tags } = collect(source, file, pluginConfig)
+		const hasTags = tags.size > 0
+
+		if (hasTags) {
+			buildContext.tagsByFile.set(file, tags)
+		} else {
+			buildContext.tagsByFile.delete(file)
+		}
+
+		if (!hadTags && !hasTags) return
+
+		await writeTypes(flattenTags(buildContext.tagsByFile))
+		logger.info(`updated types from ${file}`)
+	}
+
+	// collect change events that arrive close together and handle each file once.
+	// The file path is the key, so changes to different files are all kept, and a
+	// change that arrives during a rebuild runs after that rebuild finishes.
+	const queue = createBatcher<string, WatchEvent>(75, async batch => {
+		for (const [file, event] of batch) {
+			try {
+				await onEvent(event, file)
+			} catch (err) {
+				logger.error(`failed to update types from ${file}`, err)
+			}
+		}
+	})
 
 	return {
 		name: 'cxx',
 		enforce: 'pre',
-		transform(code, id) {
-			const { template, tags } = collect(code, id, pluginConfig)
+		config() {
+			const ignore = pluginConfig.watch?.ignore
+			if (!ignore?.length) return null
 
-			if (tags.size) buildContext.tagsByFile.set(id, tags)
+			// Vite concatenates `server.watch.ignored`, so only return the additions
+			return {
+				server: {
+					watch: {
+						ignored: ignore,
+					},
+				},
+			}
+		},
+		configResolved(config: ResolvedConfig) {
+			const root = pluginConfig.watch?.root ?? config.root
+
+			try {
+				watchRoot = normaliseWatchPath(realpathSync.native(root))
+			} catch {
+				watchRoot = normaliseWatchPath(root)
+			}
+		},
+		transform(code, id) {
+			if (id.startsWith('\0') || id.includes('/node_modules/')) return null
+			// cheap bail-out before running the regex/lightningcss on every module
+			if (!code.includes('cxx')) return null
+
+			const cleanId = id.split('?')[0]
+			if (!ACCEPTED_EXTENSIONS.has(path.extname(cleanId))) return null
+
+			const { template, tags, map } = collect(code, cleanId, pluginConfig)
+			if (template === code) return null
+
+			const resolved = resolveWatchFile(cleanId)
+
+			if (tags.size) {
+				buildContext.tagsByFile.set(resolved, tags)
+			} else {
+				buildContext.tagsByFile.delete(resolved)
+			}
 
 			return {
 				code: template,
-				map: null,
+				map,
 			}
 		},
 		configureServer(server: ViteDevServer) {
 			logger.info('Watching for changes...')
 
 			server.watcher
-				.on('add', (p: string) => rebuild('add', p))
-				.on('change', (p: string) => rebuild('change', p))
-				.on('unlink', (p: string) => rebuild('unlink', p))
+				.on('add', (p: string) => {
+					const file = watchedFile(p)
+					if (file) queue.add(file, 'add')
+				})
+				.on('change', (p: string) => {
+					const file = watchedFile(p)
+					if (file) queue.add(file, 'change')
+				})
+				.on('unlink', (p: string) => {
+					const file = watchedFile(p)
+					if (file) queue.add(file, 'unlink')
+				})
 		},
 		async writeBundle() {
 			await writeTypes(flattenTags(buildContext.tagsByFile))

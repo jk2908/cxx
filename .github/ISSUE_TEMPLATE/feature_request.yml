@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an idea
+labels: ['enhancement']
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - '@jk2908/cxx'
+        - 'vscode-cxx'
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true

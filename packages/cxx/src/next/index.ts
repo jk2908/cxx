@@ -5,70 +5,142 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import watcher from '@parcel/watcher'
-
 import type { Logger } from '../logger.js'
-import type { PluginConfig, Tags } from '../types.js'
-import { collect, flattenTags, isENOENT, writeTypes } from '../index.js'
+import type { PluginConfig } from '../types.js'
+import { collect, isENOENT, writeTypesForFile } from '../build.js'
+import { GENERATED_DIR } from '../config.js'
 
 const nextDir = path.dirname(fileURLToPath(import.meta.url))
 const loader = path.join(nextDir, 'cxx-loader.cjs')
 
-// keep the latest extracted tags per file so one edit can rebuild the full type surface
-const tagsByFile: Map<string, Tags> = new Map()
-
-// directory watches are shared, but rebuilds still need the file's config and logger
+// keep the exact file inputs and their config so a single recursive watcher can filter events
 const watchedFiles = new Map<string, { pluginConfig: PluginConfig; logger: Logger }>()
-const subscriptionsByDir = new Map<string, Promise<AsyncSubscription>>()
 
-/**
- * Rebuild the generated type surface for one watched file after a Parcel event
- */
-async function rebuildFile(filePath: string, event: Event['type']) {
-	const watchedFile = watchedFiles.get(filePath)
-	if (!watchedFile) return
+let subscription: AsyncSubscription | null = null
+let subscriptionPromise: Promise<void> | null = null
+let cleanupRegistered = false
+let watcherLogger: Logger | null = null
 
-	const { pluginConfig, logger } = watchedFile
-	const hadTags = tagsByFile.has(filePath)
+// a single recursive watch avoids overlapping per-directory watchers; ignore the parts of the
+// tree that never contain source we transform
+const DEFAULT_IGNORE = [
+	'**/node_modules/**',
+	'**/.next/**',
+	`**/${GENERATED_DIR}/**`,
+	'**/.git/**',
+]
+
+async function onEvent(event: Event['type'], filePath: string) {
+	const watched = watchedFiles.get(filePath)
+	if (!watched) return
+
+	const { pluginConfig, logger } = watched
 
 	if (event === 'delete') {
-		tagsByFile.delete(filePath)
-		if (!hadTags) return
-
-		await writeTypes(flattenTags(tagsByFile))
+		await writeTypesForFile(filePath, new Map())
 		logger.info(`updated types from ${filePath}`)
 
 		return
 	}
 
+	let source: string
+
 	try {
-		const source = await fs.readFile(filePath, 'utf-8')
-		const { tags } = collect(source, filePath, pluginConfig)
-		const hasTags = tags.size > 0
-
-		if (hasTags) {
-			tagsByFile.set(filePath, tags)
-		} else {
-			tagsByFile.delete(filePath)
-		}
-
-		if (!hadTags && !hasTags) return
-
-		await writeTypes(flattenTags(tagsByFile))
-		logger.info(`updated types from ${filePath}`)
+		source = await fs.readFile(filePath, 'utf-8')
 	} catch (err) {
 		if (!isENOENT(err)) throw err
-		if (!hadTags) return
 
-		tagsByFile.delete(filePath)
-		await writeTypes(flattenTags(tagsByFile))
-
+		await writeTypesForFile(filePath, new Map())
 		logger.info(`updated types from ${filePath}`)
+
+		return
 	}
+
+	const { tags } = collect(source, filePath, pluginConfig)
+
+	await writeTypesForFile(filePath, tags)
+	logger.info(`updated types from ${filePath}`)
 }
 
 /**
- * Transform one module and, in development, register it with the shared watcher state
+ * Start the watcher lazily, on the first file we actually process, so merely importing this module
+ * has no side effects.
+ */
+function ensureWatcher(pluginConfig: PluginConfig, logger: Logger) {
+	watcherLogger = logger
+
+	if (subscriptionPromise) return
+
+	const root = pluginConfig.watch?.root ?? process.cwd()
+	const ignore = [...DEFAULT_IGNORE, ...(pluginConfig.watch?.ignore ?? [])]
+
+	subscriptionPromise = (async () => {
+		// lazily imported so the native module is only loaded when watching is needed
+		const { subscribe } = await import('@parcel/watcher')
+
+		subscription = await subscribe(
+			root,
+			(watchErr, events) => {
+				if (watchErr) {
+					watcherLogger?.error(`failed to watch ${root}`, watchErr)
+
+					return
+				}
+
+				for (const event of events) {
+					const filePath = path.resolve(event.path)
+					if (!watchedFiles.has(filePath)) continue
+
+					void onEvent(event.type, filePath).catch(err => {
+						watcherLogger?.error(`failed to update types from ${filePath}`, err)
+					})
+				}
+			},
+			{ ignore },
+		)
+
+		registerCleanup()
+	})().catch(err => {
+		watcherLogger?.error('failed to start cxx watcher', err)
+		subscriptionPromise = null
+	})
+}
+
+/**
+ * Close all active Parcel subscriptions.
+ */
+async function cleanup() {
+	const active = subscription
+
+	subscription = null
+	subscriptionPromise = null
+	watchedFiles.clear()
+
+	if (active) await active.unsubscribe()
+}
+
+/**
+ * Restore the host process's default signal behaviour instead of forcing an exit from a library.
+ */
+async function shutdown(signal: NodeJS.Signals) {
+	try {
+		await cleanup()
+	} finally {
+		// our `once` handlers have already been removed, so re-raising lets Node terminate as usual
+		process.kill(process.pid, signal)
+	}
+}
+
+function registerCleanup() {
+	if (cleanupRegistered) return
+
+	cleanupRegistered = true
+	process.once('SIGINT', () => void shutdown('SIGINT'))
+	process.once('SIGTERM', () => void shutdown('SIGTERM'))
+}
+
+/**
+ * Transform one module and, in development, register it with the shared watcher state.
  */
 export function processFile(
 	source: string,
@@ -77,87 +149,39 @@ export function processFile(
 	logger: Logger,
 ) {
 	const resolvedFilePath = path.resolve(filePath)
-	const directoryPath = path.dirname(resolvedFilePath)
-	let subscription = subscriptionsByDir.get(directoryPath)
 
-	if (process.env.NODE_ENV !== 'production') {
-		// Parcel watches directories, so remember the exact file inputs we care about
+	if (process.env['NODE_ENV'] !== 'production') {
 		watchedFiles.set(resolvedFilePath, { pluginConfig, logger })
-
-		if (!subscription) {
-			// one subscription per directory is enough; the callback filters back down to watched files
-			subscription = watcher.subscribe(directoryPath, async (err, events) => {
-				if (err) {
-					logger.error(`failed to update types from ${directoryPath}`, err)
-					return
-				}
-
-				// Parcel can report unrelated files from the same directory, so ignore anything unregistered
-				for (const event of events) {
-					const eventFilePath = path.resolve(event.path)
-					if (!watchedFiles.has(eventFilePath)) continue
-
-					try {
-						await rebuildFile(eventFilePath, event.type)
-					} catch (watchErr) {
-						logger.error(`failed to update types from ${eventFilePath}`, watchErr)
-					}
-				}
-			})
-
-			subscriptionsByDir.set(directoryPath, subscription)
-		}
+		ensureWatcher(pluginConfig, logger)
 	}
 
-	const result = collect(source, filePath, pluginConfig)
+	const result = collect(source, resolvedFilePath, pluginConfig)
 
-	if (result.tags.size > 0) {
-		tagsByFile.set(filePath, result.tags)
-	} else {
-		tagsByFile.delete(filePath)
-	}
-
-	void writeTypes(flattenTags(tagsByFile))
+	void writeTypesForFile(resolvedFilePath, result.tags).catch(err => {
+		logger.error(`failed to write types for ${resolvedFilePath}`, err)
+	})
 
 	return result
 }
 
-/**
- * Close all active Parcel subscriptions before the process exits
- */
-async function cleanup() {
-	await Promise.all(
-		[...subscriptionsByDir].map(async ([directoryPath, subPromise]) => {
-			subscriptionsByDir.delete(directoryPath)
-			await (await subPromise).unsubscribe()
-		}),
-	)
+const TURBOPACK_GLOB = '*.{tsx,jsx,ts,js}'
 
-	subscriptionsByDir.clear()
-}
-
-process.once('SIGINT', () => {
-	cleanup().finally(() => process.exit(130))
-})
-
-process.once('SIGTERM', () => {
-	cleanup().finally(() => process.exit(143))
-})
-
-export async function withCxx(
-	nextConfig: NextConfig = {},
-	pluginConfig: PluginConfig = {},
-) {
-	const TURBOPACK_GLOB = '*.{tsx,jsx,ts,js}'
+export function withCxx(nextConfig: NextConfig = {}, pluginConfig: PluginConfig = {}) {
+	const watchRoot =
+		pluginConfig.watch?.root ?? nextConfig.turbopack?.root ?? process.cwd()
 
 	const loaderItem = {
 		loader,
 		options: {
-			pluginConfig,
+			pluginConfig: {
+				...pluginConfig,
+				watch: { ...pluginConfig.watch, root: watchRoot },
+			},
 		},
 	}
 
 	const currentRule = nextConfig.turbopack?.rules?.[TURBOPACK_GLOB]
+	const userWebpack = nextConfig.webpack
 
 	return {
 		...nextConfig,
@@ -174,6 +198,25 @@ export async function withCxx(
 							}
 						: { loaders: [loaderItem] },
 			},
+		},
+		// webpack builds (Next without `--turbopack`) would otherwise silently skip the transform
+		webpack(config: unknown, context: unknown) {
+			const next = (
+				userWebpack ? userWebpack(config as never, context as never) : config
+			) as {
+				module?: { rules?: unknown[] }
+			}
+
+			next.module ??= {}
+			next.module.rules ??= []
+			next.module.rules.push({
+				test: /\.[jt]sx?$/,
+				exclude: /node_modules/,
+				enforce: 'pre',
+				use: [loaderItem],
+			})
+
+			return next
 		},
 	}
 }
