@@ -268,6 +268,19 @@ function partialPath(filePath: string) {
 }
 
 /**
+ * The partial directory changes whenever any process adds, removes or overwrites a partial, so
+ * its mtime tells us whether another writer moved while we were rebuilding.
+ */
+async function partialDirMtime() {
+	try {
+		return (await fs.stat(PARTIAL_DIR)).mtimeMs
+	} catch (err) {
+		if (isENOENT(err)) return 0
+		throw err
+	}
+}
+
+/**
  * Read every per-file partial and merge them into one tag map. Partials whose source file no
  * longer exists are pruned so deleted files drop out of the types.
  */
@@ -346,7 +359,8 @@ function scheduleRebuild() {
 }
 
 /**
- * Rebuild `index.d.ts` from every partial now.
+ * Rebuild `index.d.ts` from every partial now. If another writer touches a partial mid-rebuild,
+ * rebuild once more so the final write reflects every partial. Bounded to avoid spinning.
  */
 export function flushTypes() {
 	if (rebuildTimer) {
@@ -355,7 +369,16 @@ export function flushTypes() {
 	}
 
 	return enqueueWrite(async () => {
-		await writeRenderedTypes(await readPartials())
+		let before = await partialDirMtime()
+
+		for (let attempt = 0; attempt < 3; attempt++) {
+			await writeRenderedTypes(await readPartials())
+
+			const after = await partialDirMtime()
+			if (after === before) return
+
+			before = after
+		}
 	})
 }
 

@@ -9,9 +9,9 @@ export type Tags = Map<string, string[]>
 export type PluginConfig = {
 	typeSuffix?: string | false
 	watch?: {
-		// root used for type-regeneration watching; defaults to the Vite root / Next turbopack root
+		/** Root used for type-regeneration watching. Defaults to the Vite root or Next Turbopack root. */
 		root?: string
-		// extra globs to ignore on top of the defaults
+		/** Extra globs to ignore on top of the defaults. */
 		ignore?: string[]
 	}
 }

@@ -24,7 +24,7 @@ function normaliseWatchPath(p: string) {
 	return p.replace(/\\/g, '/')
 }
 
-// small glob matcher for the ignore patterns we support (`**`, `*`, `?`)
+/** Tiny glob matcher for the ignore patterns we support (`**`, `*`, `?`). */
 function globToRegExp(glob: string) {
 	const pattern = glob
 		.replace(/[.+^${}()|[\]\\]/g, '\\$&')
@@ -57,7 +57,7 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		}
 	}
 
-	// returns the canonical, watchable path or null when the file is irrelevant
+	/** Returns the canonical, watchable path, or null when the file is irrelevant. */
 	function watchedFile(filePath: string): string | null {
 		const resolvedPath = resolveWatchFile(filePath)
 
@@ -90,8 +90,10 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		await writeTypesForFile(file, tags)
 	}
 
-	// seed the type surface from the source tree, so a fresh checkout has types
-	// before any file is transformed or edited
+	/**
+	 * Seed the type surface from the source tree, so a fresh checkout has types before any file is
+	 * transformed or edited.
+	 */
 	async function scan(dir: string) {
 		let entries
 

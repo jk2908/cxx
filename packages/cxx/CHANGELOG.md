@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+
+- Re-checked the partials directory after a rebuild, so a rebuild cannot land over a concurrent worker's write
+
 ## 0.3.2
 
 - Persisted per-file type partials in Vite too, seeded with an initial scan, so a fresh checkout has types before any edit

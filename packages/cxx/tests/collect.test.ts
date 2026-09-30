@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { collect, DuplicateTagError, InvalidTagError, tagsToType } from '../src/build.js'
 
 let counter = 0
-// collect caches by id+source, NOT config. Use a fresh id per case so the
-// assertion on `config.typeSuffix` reflects the case under test, not a cached one.
+
+/**
+ * `collect` caches by id and source, not config, so each case uses a fresh id to make sure the
+ * assertion on `config.typeSuffix` reflects that case rather than a cached result.
+ */
 function getId() {
 	counter += 1
 	return `/test/component-${counter}.tsx`
