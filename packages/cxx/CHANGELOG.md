@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.6
+
+- Restored the Next source map, which `0.3.5` dropped when the loader was rewritten
+
 ## 0.3.5
 
 - Removed the Next file watcher, the `@parcel/watcher` dependency and the process signal handlers

@@ -38,8 +38,6 @@ export function processFile(
 const TURBOPACK_GLOB = '*.{tsx,jsx,ts,js}'
 
 export function withCxx(nextConfig: NextConfig = {}, pluginConfig: PluginConfig = {}) {
-	// Seed on dev startup only, so a fresh checkout has types before any file is compiled. A
-	// production build is covered by the loader, and `next start` must not write at runtime.
 	if (process.env['NODE_ENV'] !== 'production') {
 		const seedRoot = pluginConfig.watch?.root ?? process.cwd()
 
