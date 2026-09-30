@@ -5,11 +5,7 @@ import { withCxx } from '../src/next/index.js'
 type LoaderItem = {
 	loader: string
 	options: {
-		pluginConfig: {
-			watch?: {
-				root?: string
-			}
-		}
+		pluginConfig: Record<string, unknown>
 	}
 }
 
@@ -55,19 +51,12 @@ describe('withCxx', () => {
 		expect(rule.loaders[0]!.loader).toMatch(/cxx-loader\.cjs$/)
 	})
 
-	it('defaults the watch root to the turbopack root', () => {
-		const rule = build({ turbopack: { root: '/repo' } }).turbopack.rules[
-			'*.{tsx,jsx,ts,js}'
-		] as { loaders: LoaderItem[] }
+	it('passes the plugin config through to the loader', () => {
+		const rule = build({}, { typeSuffix: 'X' }).turbopack.rules['*.{tsx,jsx,ts,js}'] as {
+			loaders: LoaderItem[]
+		}
 
-		expect(rule.loaders[0]!.options.pluginConfig.watch?.root).toBe('/repo')
-	})
-
-	it('lets an explicit watch.root override the turbopack root', () => {
-		const rule = build({ turbopack: { root: '/repo' } }, { watch: { root: '/app' } })
-			.turbopack.rules['*.{tsx,jsx,ts,js}'] as { loaders: LoaderItem[] }
-
-		expect(rule.loaders[0]!.options.pluginConfig.watch?.root).toBe('/app')
+		expect(rule.loaders[0]!.options.pluginConfig).toEqual({ typeSuffix: 'X' })
 	})
 
 	it('preserves an existing turbopack rule instead of replacing it', () => {

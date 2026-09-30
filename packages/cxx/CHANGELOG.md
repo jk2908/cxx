@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Removed the Next file watcher, the `@parcel/watcher` dependency and the process signal handlers
+- Next types now update as files compile through the loader, and deleted files are pruned on the next rebuild
+- Fixed dev servers exiting with code 143, which came from the loader's asynchronous signal handling
+
 ## 0.3.4
 
 - Removed the `watch.ignore` plugin option; use Vite's own `server.watch.ignored` to narrow what Vite watches

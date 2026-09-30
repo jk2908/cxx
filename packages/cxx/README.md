@@ -96,7 +96,7 @@ Use the Next integration when you want `cxx` transforms and generated class-key 
 
 ## Watch options
 
-`watch.root` sets the tree used for type-regeneration watching. It defaults to the Vite root, and to the Turbopack root in Next (falling back to `process.cwd()`).
+`watch.root` sets the tree scanned for `cxx` tags. It defaults to the Vite root, and to the app directory (`process.cwd()`) in Next.
 
 ```ts
 export default withCxx(nextConfig, {
