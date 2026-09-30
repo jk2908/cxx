@@ -1,6 +1,6 @@
 {
 	"name": "@jk2908/cxx",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Utilities for generating styles in React 19",
 	"keywords": [
 		"css",

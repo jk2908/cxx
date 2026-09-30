@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Removed a stale npm `package-lock.json` that produced false Dependabot alerts
+- Bumped `next` to `^16.3.7` and patched transitive `postcss`, `sharp` and `baseline-browser-mapping`
+- Renamed the `next` example workspace to `next-example` to avoid a hoist collision with the `next` package
+
 ## 0.3.0
 
 - Fixed emitted CSS being corrupted by unescaped CSS escapes such as `\f101`, `\e900` and `\2014`
