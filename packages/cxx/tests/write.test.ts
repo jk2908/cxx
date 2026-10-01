@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { flushTypes, maybeWrite, writeTypesForFile } from '../src/build.js'
+import { flushTypes, maybeWrite, seedTypes, writeTypesForFile } from '../src/build.js'
 
 describe('maybeWrite', () => {
 	let dir: string
@@ -76,6 +76,20 @@ describe('writeTypesForFile', () => {
 
 		expect(pruned).not.toContain('export type AClasses')
 		expect(pruned).toContain('export type BClasses')
+	})
+
+	it('sweeps orphaned temp files when seeding', async () => {
+		const tmpInRoot = path.join(dir, '.cxx', 'index.d.ts.tmp')
+		const tmpInTags = path.join(dir, '.cxx', 'tags', 'abc.tmp')
+
+		await fs.mkdir(path.join(dir, '.cxx', 'tags'), { recursive: true })
+		await fs.writeFile(tmpInRoot, 'x')
+		await fs.writeFile(tmpInTags, 'x')
+
+		await seedTypes(dir, {})
+
+		await expect(fs.access(tmpInRoot)).rejects.toThrow()
+		await expect(fs.access(tmpInTags)).rejects.toThrow()
 	})
 
 	it('drops the partial for a file that no longer uses cxx', async () => {

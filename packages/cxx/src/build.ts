@@ -448,10 +448,35 @@ export async function refreshFile(file: string, config: PluginConfig) {
 }
 
 /**
+ * Remove orphaned `.tmp` files left by a write that was killed before its rename. Only the seed
+ * does this, because it runs once at startup before any write is in flight.
+ */
+async function sweepTmpFiles() {
+	for (const dir of [GENERATED_DIR, PARTIAL_DIR]) {
+		let entries: string[]
+
+		try {
+			entries = await fs.readdir(dir)
+		} catch (err) {
+			if (isENOENT(err)) continue
+			throw err
+		}
+
+		for (const entry of entries) {
+			if (entry.endsWith('.tmp')) {
+				await fs.rm(path.join(dir, entry), { force: true })
+			}
+		}
+	}
+}
+
+/**
  * Walk every source file under `root` and seed the type surface, so a fresh checkout (and a build
  * with no edits) has types without waiting for a transform.
  */
 export async function seedTypes(root: string, config: PluginConfig) {
+	await sweepTmpFiles()
+
 	async function scan(dir: string) {
 		let entries: Dirent[]
 

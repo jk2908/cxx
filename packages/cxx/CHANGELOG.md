@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.7
+
+- Swept orphaned temporary files when seeding, so an interrupted write cannot leave `.tmp` files behind
+
 ## 0.3.6
 
 - Restored the Next source map, which `0.3.5` dropped when the loader was rewritten
