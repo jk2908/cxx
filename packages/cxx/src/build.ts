@@ -7,10 +7,18 @@ import path from 'node:path'
 import { transform } from 'lightningcss'
 import MagicString, { type SourceMap } from 'magic-string'
 
+import type { StyleHash, StyleManifest, StyleManifestEntry } from './manifest.js'
 import type { PluginConfig, Tags } from './types.js'
-import { AUTOGEN_MSG, GENERATED_DIR, NAME, PKG_NAME } from './config.js'
+import {
+	AUTOGEN_MSG,
+	GENERATED_DIR,
+	NAME,
+	PKG_NAME,
+	STYLE_MANIFEST_FILE,
+} from './config.js'
 import { Logger } from './logger.js'
 import { LruCache } from './lru.js'
+import { hashStyle } from './style-hash.js'
 import { pascalise } from './utils.js'
 
 const logger = new Logger(NAME)
@@ -27,6 +35,7 @@ const collectCache = new LruCache<{
 	config: string
 	template: string
 	tags: Tags
+	styles: StyleHash[]
 	map: SourceMap | null
 }>()
 
@@ -102,13 +111,6 @@ const regex =
 
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
-/**
- * Hash transformed CSS into a stable href for style deduplication.
- */
-function hashCss(code: Uint8Array) {
-	return `cxx-${createHash('sha256').update(code).digest('base64url').slice(0, 12)}`
-}
-
 export class DuplicateTagError extends Error {
 	name = 'DuplicateTagError'
 
@@ -139,6 +141,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	if (cached?.source === source && cached.config === configKey) return cached
 
 	const tags: Tags = new Map()
+	const collectedStyles: StyleHash[] = []
 	const magic = new MagicString(source)
 
 	let matched = false
@@ -172,7 +175,9 @@ export function collect(source: string, id: string, config: PluginConfig) {
 			}
 		})()
 
-		const href = hashCss(code)
+		const { href, hash } = hashStyle(code)
+		collectedStyles.push({ href, hash })
+
 		// map each class name to its generated (scoped) name
 		const styles = Object.fromEntries(
 			Object.entries(classExports).map(([k, v]) => [k, v.name]),
@@ -217,7 +222,14 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	const map = matched
 		? magic.generateMap({ source: id, includeContent: true, hires: true })
 		: null
-	const result = { source, config: configKey, template, tags, map }
+	const result = {
+		source,
+		config: configKey,
+		template,
+		tags,
+		styles: collectedStyles,
+		map,
+	}
 
 	collectCache.set(id, result)
 
@@ -400,6 +412,175 @@ export function flushTypes() {
 	})
 }
 
+const STYLE_PARTIAL_DIR = 'styles'
+const STYLE_REBUILD_WAIT = 100
+
+let styleRebuildTimer: ReturnType<typeof setTimeout> | null = null
+
+function styleManifestPath(root: string) {
+	return path.join(root, GENERATED_DIR, STYLE_MANIFEST_FILE)
+}
+
+function stylePartialDir(root: string) {
+	return path.join(root, GENERATED_DIR, STYLE_PARTIAL_DIR)
+}
+
+function stylePartialPath(root: string, filePath: string) {
+	return path.join(
+		stylePartialDir(root),
+		`${createHash('sha1').update(filePath).digest('hex')}.json`,
+	)
+}
+
+/**
+ * Persist one file's style hashes, then rebuild the shared manifest after a
+ * short delay so a burst of transforms only merges the partials once.
+ */
+export function writeStylesForFile(
+	filePath: string,
+	styles: StyleHash[],
+	root: string = process.cwd(),
+) {
+	return enqueueWrite(async () => {
+		const dir = stylePartialDir(root)
+		await fs.mkdir(dir, { recursive: true })
+
+		const partial = stylePartialPath(root, filePath)
+
+		if (styles.length === 0) {
+			await fs.rm(partial, { force: true })
+			return
+		}
+
+		await writeFileAtomic(partial, JSON.stringify({ file: filePath, styles }))
+	})
+		.then(() => scheduleStyleRebuild(root))
+		.catch(err => {
+			logger.error(`failed to write styles for ${filePath}`, err)
+		})
+}
+
+function scheduleStyleRebuild(root: string) {
+	if (styleRebuildTimer) clearTimeout(styleRebuildTimer)
+
+	styleRebuildTimer = setTimeout(() => {
+		styleRebuildTimer = null
+
+		flushStyles(root).catch(err => {
+			logger.error('failed to generate style manifest', err)
+		})
+	}, STYLE_REBUILD_WAIT)
+}
+
+/**
+ * Merge every per-file style partial into the style manifest.
+ */
+export function flushStyles(root: string = process.cwd()) {
+	if (styleRebuildTimer) {
+		clearTimeout(styleRebuildTimer)
+		styleRebuildTimer = null
+	}
+
+	return enqueueWrite(async () => {
+		const manifestPath = styleManifestPath(root)
+		const manifest = await readStylePartials(root)
+
+		await fs.mkdir(path.dirname(manifestPath), { recursive: true })
+		await maybeWrite(manifestPath, `${JSON.stringify(manifest, null, '\t')}\n`)
+	})
+}
+
+async function readStylePartials(root: string): Promise<StyleManifest> {
+	let entries: string[]
+
+	try {
+		entries = await fs.readdir(stylePartialDir(root))
+	} catch (err) {
+		if (isENOENT(err)) return emptyStyleManifest()
+		throw err
+	}
+
+	const styles = new Map<string, StyleManifestEntry>()
+
+	for (const entry of entries) {
+		if (!entry.endsWith('.json')) continue
+
+		const filePartial = path.join(stylePartialDir(root), entry)
+		let parsed: { file: string; styles: StyleHash[] }
+
+		try {
+			parsed = JSON.parse(await fs.readFile(filePartial, 'utf-8'))
+		} catch {
+			continue
+		}
+
+		if (
+			typeof parsed.file !== 'string' ||
+			!Array.isArray(parsed.styles) ||
+			parsed.styles.length === 0
+		) {
+			await fs.rm(filePartial, { force: true })
+			continue
+		}
+
+		let source: string
+
+		try {
+			source = await fs.readFile(parsed.file, 'utf-8')
+		} catch {
+			await fs.rm(filePartial, { force: true })
+			continue
+		}
+
+		if (!source.includes('cxx')) {
+			await fs.rm(filePartial, { force: true })
+			continue
+		}
+
+		const file = path.relative(root, parsed.file).split(path.sep).join('/')
+
+		for (const style of parsed.styles) {
+			if (
+				typeof style !== 'object' ||
+				style === null ||
+				typeof style.href !== 'string' ||
+				typeof style.hash !== 'string'
+			) {
+				continue
+			}
+
+			const existing = styles.get(style.href)
+
+			if (existing) {
+				if (existing.hash !== style.hash) {
+					logger.error(
+						`style hash collision for ${style.href}: ${existing.hash} and ${style.hash}`,
+					)
+					continue
+				}
+
+				if (!existing.files.includes(file)) existing.files.push(file)
+				continue
+			}
+
+			styles.set(style.href, { hash: style.hash, files: [file] })
+		}
+	}
+
+	for (const style of styles.values()) style.files = style.files.toSorted()
+
+	const sortedStyles = Object.fromEntries(
+		[...styles.entries()].toSorted(([a], [b]) => a.localeCompare(b)),
+	)
+	const hashes = [...new Set([...styles.values()].map(style => style.hash))].toSorted()
+
+	return { schema: 1, hashes, styles: sortedStyles }
+}
+
+function emptyStyleManifest(): StyleManifest {
+	return { schema: 1, hashes: [], styles: {} }
+}
+
 export const SOURCE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx'])
 
 // directories that never contain source we transform
@@ -429,30 +610,43 @@ async function runWithConcurrency<T>(
 }
 
 /**
- * Read one file, collect its tags, and persist them. A file with no `cxx` usage has its partial
- * removed, so stale tags drop out.
+ * Read one file, collect its tags and styles, and persist them. A file with no `cxx` usage has its
+ * partials removed, so stale entries drop out.
  */
-export async function refreshFile(file: string, config: PluginConfig) {
+export async function refreshFile(
+	file: string,
+	config: PluginConfig,
+	root: string = config.watch?.root ?? process.cwd(),
+) {
 	let source: string
 
 	try {
 		source = await fs.readFile(file, 'utf-8')
 	} catch (err) {
 		if (!isENOENT(err)) throw err
-		await writeTypesForFile(file, new Map())
+		await Promise.all([
+			writeTypesForFile(file, new Map()),
+			writeStylesForFile(file, [], root),
+		])
 		return
 	}
 
-	const tags = source.includes('cxx') ? collect(source, file, config).tags : new Map()
-	await writeTypesForFile(file, tags)
+	const result = source.includes('cxx')
+		? collect(source, file, config)
+		: { tags: new Map(), styles: [] }
+
+	await Promise.all([
+		writeTypesForFile(file, result.tags),
+		writeStylesForFile(file, result.styles, root),
+	])
 }
 
 /**
  * Remove orphaned `.tmp` files left by a write that was killed before its rename. Only the seed
  * does this, because it runs once at startup before any write is in flight.
  */
-async function sweepTmpFiles() {
-	for (const dir of [GENERATED_DIR, PARTIAL_DIR]) {
+async function sweepTmpFiles(root: string) {
+	for (const dir of [GENERATED_DIR, PARTIAL_DIR, stylePartialDir(root)]) {
 		let entries: string[]
 
 		try {
@@ -471,11 +665,11 @@ async function sweepTmpFiles() {
 }
 
 /**
- * Walk every source file under `root` and seed the type surface, so a fresh checkout (and a build
- * with no edits) has types without waiting for a transform.
+ * Walk every source file under `root` and seed types and styles, so a fresh checkout (and a build
+ * with no edits) has metadata without waiting for a transform.
  */
 export async function seedTypes(root: string, config: PluginConfig) {
-	await sweepTmpFiles()
+	await sweepTmpFiles(root)
 
 	async function scan(dir: string) {
 		let entries: Dirent[]
@@ -498,12 +692,12 @@ export async function seedTypes(root: string, config: PluginConfig) {
 
 			if (!SOURCE_EXTENSIONS.has(path.extname(entry.name))) return
 
-			await refreshFile(full, config)
+			await refreshFile(full, config, root)
 		})
 	}
 
 	await scan(root)
-	await flushTypes()
+	await Promise.all([flushTypes(), flushStyles(root)])
 }
 
 /**

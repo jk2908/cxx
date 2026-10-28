@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0-canary.0
+
+- Added a style manifest at `.cxx/styles.json` containing each compiled style's full SHA-256 hash and source files
+- Added the `@jk2908/cxx/manifest` entry with `createStyleHash` for hashing inline style content
+
 ## 0.3.7
 
 - Swept orphaned temporary files when seeding, so an interrupted write cannot leave `.tmp` files behind

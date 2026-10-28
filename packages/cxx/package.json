@@ -1,6 +1,6 @@
 {
 	"name": "@jk2908/cxx",
-	"version": "0.3.7",
+	"version": "0.4.0-canary.0",
 	"description": "Utilities for generating styles in React 19",
 	"keywords": [
 		"css",
@@ -40,6 +40,10 @@
 		"./vite": {
 			"types": "./dist/vite/index.d.ts",
 			"default": "./dist/vite/index.js"
+		},
+		"./manifest": {
+			"types": "./dist/manifest.d.ts",
+			"default": "./dist/manifest.js"
 		}
 	},
 	"publishConfig": {

@@ -109,6 +109,39 @@ export default withCxx(nextConfig, {
 
 See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
+## Style manifest
+
+Every build writes `.cxx/styles.json` next to the generated types. It records the full hash for
+each compiled style block and the source files that use it:
+
+```json
+{
+	"schema": 1,
+	"hashes": ["sha256-Bjcdzs7G6AHWGeWChFkjFjHj7BliIQp8Y7q1MK3PibE="],
+	"styles": {
+		"cxx-Bjcdzs7G6AHW": {
+			"hash": "sha256-Bjcdzs7G6AHWGeWChFkjFjHj7BliIQp8Y7q1MK3PibE=",
+			"files": ["src/deduped.tsx"]
+		}
+	}
+}
+```
+
+`hashes` is deduplicated and sorted. `styles` is keyed by the `href` used by the `<style>` element,
+and `files` are relative to the watch root. The manifest is written automatically; there is no
+configuration.
+
+For consumers that need to hash inline CSS themselves, use the Node-only manifest entry:
+
+```ts
+import { createStyleHash } from '@jk2908/cxx/manifest'
+
+const hash = createStyleHash(css)
+// "sha256-..." — quotes are added by the CSP policy builder
+```
+
+The hash must be created from the exact text inserted into the style element.
+
 ## Syntax highlighting
 
 The [`vscode-cxx`](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) extension provides syntax highlighting for `cxx` and `cxx.tag()` tagged template literals in VS Code. See its [README](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) for install instructions.

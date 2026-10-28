@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { PluginConfig } from '../types.js'
-import { collect, seedTypes, writeTypesForFile } from '../build.js'
+import { collect, seedTypes, writeStylesForFile, writeTypesForFile } from '../build.js'
 import { Logger } from '../logger.js'
 
 const typeLogger = new Logger('cxx')
@@ -13,24 +13,27 @@ const nextDir = path.dirname(fileURLToPath(import.meta.url))
 const loader = path.join(nextDir, 'cxx-loader.cjs')
 
 /**
- * Transform one module and persist its tag types. Deleted files are pruned from the types on the
- * next rebuild, since `readPartials` drops any partial whose source is gone.
+ * Transform one module and persist its tag types and styles. Deleted files are pruned on the next
+ * rebuild, since the partial readers drop any entry whose source is gone.
  */
 export function processFile(
 	source: string,
 	filePath: string,
 	pluginConfig: PluginConfig,
+	root: string = pluginConfig.watch?.root ?? process.cwd(),
 ) {
 	const resolvedFilePath = path.resolve(filePath)
 
 	// skip files that cannot contain a template, including node_modules
 	if (!source.includes('cxx') || /[\\/]node_modules[\\/]/.test(resolvedFilePath)) {
-		return { template: source, tags: new Map(), map: null }
+		void writeStylesForFile(resolvedFilePath, [], root)
+		return { template: source, tags: new Map(), styles: [], map: null }
 	}
 
 	const result = collect(source, resolvedFilePath, pluginConfig)
 
 	void writeTypesForFile(resolvedFilePath, result.tags)
+	void writeStylesForFile(resolvedFilePath, result.styles, root)
 
 	return result
 }
@@ -42,7 +45,7 @@ export function withCxx(nextConfig: NextConfig = {}, pluginConfig: PluginConfig 
 		const seedRoot = pluginConfig.watch?.root ?? process.cwd()
 
 		void seedTypes(seedRoot, pluginConfig).catch(err =>
-			typeLogger.error('failed to seed cxx types', err),
+			typeLogger.error('failed to seed cxx metadata', err),
 		)
 	}
 

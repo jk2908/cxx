@@ -15,6 +15,7 @@ const esmResult = await Bun.build({
 	entrypoints: [
 		path.join(rootDir, './src/index.ts'),
 		path.join(rootDir, './src/build.ts'),
+		path.join(rootDir, './src/manifest.ts'),
 		path.join(rootDir, './src/vite/index.ts'),
 		path.join(rootDir, './src/next/index.ts'),
 	],
