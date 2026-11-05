@@ -6,12 +6,10 @@ import { type Plugin, type ResolvedConfig, type ViteDevServer } from 'vite'
 import type { PluginConfig } from '../types.js'
 import {
 	collect,
-	flushStyles,
 	flushTypes,
 	refreshFile,
 	seedTypes,
 	SOURCE_EXTENSIONS,
-	writeStylesForFile,
 	writeTypesForFile,
 } from '../build.js'
 import { GENERATED_DIR } from '../config.js'
@@ -71,15 +69,12 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 
 	async function handleEvent(event: WatchEvent, file: string) {
 		if (event === 'unlink') {
-			await Promise.all([
-				writeTypesForFile(file, new Map()),
-				writeStylesForFile(file, [], watchRoot),
-			])
+			await writeTypesForFile(file, new Map())
 		} else {
-			await refreshFile(file, pluginConfig, watchRoot)
+			await refreshFile(file, pluginConfig)
 		}
 
-		logger.info(`updated types and styles from ${file}`)
+		logger.info(`updated types from ${file}`)
 	}
 
 	function onWatch(event: WatchEvent) {
@@ -88,7 +83,7 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 			if (!file) return
 
 			void handleEvent(event, file).catch(err => {
-				logger.error(`failed to update metadata from ${file}`, err)
+				logger.error(`failed to update types from ${file}`, err)
 			})
 		}
 	}
@@ -126,14 +121,11 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 
 			if (!SOURCE_EXTENSIONS.has(path.extname(cleanId))) return null
 
-			const { template, tags, styles, map } = collect(code, cleanId, pluginConfig)
+			const { template, tags, map } = collect(code, cleanId, pluginConfig)
 
 			if (template === code) return null
 
-			const file = resolveWatchFile(cleanId)
-
-			void writeTypesForFile(file, tags)
-			void writeStylesForFile(file, styles, watchRoot)
+			void writeTypesForFile(resolveWatchFile(cleanId), tags)
 
 			return {
 				code: template,
@@ -149,7 +141,7 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 				.on('unlink', onWatch('unlink'))
 		},
 		async writeBundle() {
-			await Promise.all([flushTypes(), flushStyles(watchRoot)])
+			await flushTypes()
 		},
 	} satisfies Plugin
 }
