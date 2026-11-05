@@ -1,3 +1,5 @@
+import { createElement } from 'react'
+
 import type { StyleProps } from './types.js'
 
 /**
@@ -6,9 +8,13 @@ import type { StyleProps } from './types.js'
 export function Style(props: StyleProps) {
 	const { mode: _mode, href, css, precedence, ...rest } = props
 
-	return (
-		<style {...rest} href={href} precedence={precedence}>
-			{css}
-		</style>
+	return createElement(
+		'style',
+		{
+			...rest,
+			href,
+			precedence,
+		},
+		css,
 	)
 }

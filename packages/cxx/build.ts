@@ -23,11 +23,6 @@ const esmResult = await Bun.build({
 	packages: 'external',
 	sourcemap: 'external',
 	target: 'node',
-	jsx: {
-		runtime: 'automatic',
-		importSource: 'react',
-		development: false,
-	},
 })
 
 const loaderResult = await Bun.build({
