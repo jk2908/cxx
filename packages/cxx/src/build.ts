@@ -1,13 +1,14 @@
 import type { Dirent } from 'node:fs'
 
 import { createHash } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { transform } from 'lightningcss'
 import MagicString, { type SourceMap } from 'magic-string'
 
-import type { PluginConfig, Tags } from './types.js'
+import type { EmbedStyleDescriptor, PluginConfig, Tags } from './types.js'
 import { AUTOGEN_MSG, GENERATED_DIR, NAME, PKG_NAME } from './config.js'
 import { Logger } from './logger.js'
 import { LruCache } from './lru.js'
@@ -22,11 +23,17 @@ const encoder = new TextEncoder()
  * LRU cache of `collect` results by file id + last seen source + config so watcher and transform
  * can reuse the same parsed template/tags.
  */
+export type StyleSheet = {
+	hash: string
+	css: string
+}
+
 const collectCache = new LruCache<{
 	source: string
 	config: string
 	template: string
 	tags: Tags
+	sheets: StyleSheet[]
 	map: SourceMap | null
 }>()
 
@@ -94,19 +101,20 @@ export async function maybeWrite(filePath: string, content: string) {
 	return true
 }
 
-// matches `[css, classes, href] = cxx\`...\`` and `cxx.tag<T>('name')\`...\``
-// capture groups: 1 optional `export `, 2-4 assigned variable names, 5 plain
-// css body, 6 quote kind, 7 tag name, 8 tagged css body
+// matches cxx.embed and cxx.extract, with an optional `.tag('name')`.
+// capture groups: 1 mode, 2 quote kind, 3 tag name, 4 css body
 const regex =
-	/((?:export\s+)?)(?:const|var|let)\s*\[(\w*)\s*,?\s*(\w*)\s*,?\s*(\w*)\s*\]\s*=\s*cxx(?:\s*`([\s\S]*?)`|\s*\.\s*tag(?:\s*<[^>]+>)?\s*\(\s*(['"])(.*?)\6\s*\)\s*`([\s\S]*?)`)/gm
+	/\bcxx\.(embed|extract)(?:\.tag(?:\s*<[^>]+>)?\s*\(\s*(['"])(.*?)\2\s*\))?\s*`([\s\S]*?)`/g
 
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
 /**
- * Hash transformed CSS into a stable href for style deduplication.
+ * Hash transformed CSS into a stable href and asset key.
  */
 function hashCss(code: Uint8Array) {
-	return `cxx-${createHash('sha256').update(code).digest('base64url').slice(0, 12)}`
+	const hash = createHash('sha256').update(code).digest('base64url').slice(0, 12)
+
+	return { href: `cxx-${hash}`, key: hash }
 }
 
 export class DuplicateTagError extends Error {
@@ -139,6 +147,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	if (cached?.source === source && cached.config === configKey) return cached
 
 	const tags: Tags = new Map()
+	const sheets: StyleSheet[] = []
 	const magic = new MagicString(source)
 
 	let matched = false
@@ -152,9 +161,8 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	while ((match = regex.exec(source))) {
 		matched = true
 
-		// capture groups: export, three bindings, plain css, (quote), tag, tagged css
-		const [, exp, varOne, varTwo, varThree, plainCss, , tag, taggedCss] = match
-		const css = plainCss ?? taggedCss
+		const [, rawMode, , tag, css] = match
+		const mode = rawMode === 'extract' ? 'extract' : 'embed'
 		const matchIndex = match.index
 
 		// compile the CSS to minified CSS Modules, reporting the source line on failure
@@ -172,7 +180,9 @@ export function collect(source: string, id: string, config: PluginConfig) {
 			}
 		})()
 
-		const href = hashCss(code)
+		const { href, key } = hashCss(code)
+		const cssText = decoder.decode(code)
+
 		// map each class name to its generated (scoped) name
 		const styles = Object.fromEntries(
 			Object.entries(classExports).map(([k, v]) => [k, v.name]),
@@ -194,22 +204,23 @@ export function collect(source: string, id: string, config: PluginConfig) {
 			tags.set(tagWithSuffix, Object.keys(styles))
 		}
 
-		const statements: string[] = []
+		let replacement: string
 
-		if (varOne) {
-			statements.push(`${exp}const ${varOne} = ${JSON.stringify(decoder.decode(code))}`)
+		if (mode === 'extract') {
+			sheets.push({ hash: key, css: cssText })
+			replacement = `{\n\tmode: 'extract',\n\tstyles: ${JSON.stringify(styles)}\n}`
+		} else {
+			const styleProps: EmbedStyleDescriptor = {
+				mode: 'embed',
+				href,
+				css: cssText,
+				precedence: 'default',
+			}
+
+			replacement = `{\n\tmode: 'embed',\n\tstyles: ${JSON.stringify(styles)},\n\tstyleProps: ${JSON.stringify(styleProps)}\n}`
 		}
 
-		if (varTwo) {
-			statements.push(`${exp}const ${varTwo} = ${JSON.stringify(styles)}`)
-		}
-
-		if (varThree) {
-			statements.push(`${exp}const ${varThree} = ${JSON.stringify(href)}`)
-		}
-
-		// swap the template for the generated declarations, keeping the export keyword
-		magic.overwrite(matchIndex, matchIndex + match[0].length, statements.join('\n'))
+		magic.overwrite(matchIndex, matchIndex + match[0].length, replacement)
 	}
 
 	const template = magic.toString()
@@ -217,11 +228,42 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	const map = matched
 		? magic.generateMap({ source: id, includeContent: true, hires: true })
 		: null
-	const result = { source, config: configKey, template, tags, map }
+	const result = { source, config: configKey, template, tags, sheets, map }
 
 	collectCache.set(id, result)
 
 	return result
+}
+
+/**
+ * Write generated styles next to their source file and return relative import specifiers.
+ */
+export function writeStyleSheets(filePath: string, sheets: StyleSheet[]) {
+	if (sheets.length === 0) return []
+
+	const dir = path.join(path.dirname(filePath), '.cxx')
+	mkdirSync(dir, { recursive: true })
+
+	return sheets.map(sheet => {
+		writeFileSync(path.join(dir, `${sheet.hash}.css`), sheet.css)
+		return `./.cxx/${sheet.hash}.css`
+	})
+}
+
+/**
+ * Insert style imports after any leading module directive.
+ */
+export function injectStyleImports(template: string, imports: string[]) {
+	if (imports.length === 0) return template
+
+	const directive =
+		/^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*(['"])use (?:client|server)\1;?/.exec(template)
+	const at = directive ? directive[0].length : 0
+	const lines = imports
+		.map(specifier => `import ${JSON.stringify(specifier)};`)
+		.join('\n')
+
+	return `${template.slice(0, at)}\n${lines}\n${template.slice(at)}`
 }
 
 /**

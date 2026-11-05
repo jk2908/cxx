@@ -1,8 +1,38 @@
-export type Result<ClassName extends string = string> = readonly [
-	css: string,
-	classes: Readonly<Record<ClassName, string>>,
-	href: string,
-]
+import type { ComponentPropsWithRef } from 'react'
+
+export type StyleMode = 'embed' | 'extract'
+
+export type EmbedStyleDescriptor = {
+	mode: 'embed'
+	href: string
+	css: string
+	precedence: string
+}
+
+export type EmbedResult<ClassName extends string = string> = {
+	mode: 'embed'
+	styles: Readonly<Record<ClassName, string>>
+	styleProps: EmbedStyleDescriptor
+}
+
+export type ExtractResult<ClassName extends string = string> = {
+	mode: 'extract'
+	styles: Readonly<Record<ClassName, string>>
+}
+
+export type Result<ClassName extends string = string> =
+	| EmbedResult<ClassName>
+	| ExtractResult<ClassName>
+
+type StyleElementProps = Omit<
+	ComponentPropsWithRef<'style'>,
+	'href' | 'precedence' | 'children'
+> & {
+	href: string
+	precedence: string
+}
+
+export type StyleProps = EmbedStyleDescriptor & StyleElementProps
 
 export type Tags = Map<string, string[]>
 
@@ -14,10 +44,23 @@ export type PluginConfig = {
 	}
 }
 
-export type Tag = <ClassName extends string = string>(
+export type EmbedTag = <ClassName extends string = string>(
 	name: string,
-) => (_: TemplateStringsArray) => Result<ClassName>
+) => (_: TemplateStringsArray) => EmbedResult<ClassName>
 
-export type Cxx = ((_: TemplateStringsArray) => Result) & {
-	tag: Tag
+export type ExtractTag = <ClassName extends string = string>(
+	name: string,
+) => (_: TemplateStringsArray) => ExtractResult<ClassName>
+
+export type EmbedStyleTag = ((_: TemplateStringsArray) => EmbedResult) & {
+	tag: EmbedTag
+}
+
+export type ExtractStyleTag = ((_: TemplateStringsArray) => ExtractResult) & {
+	tag: ExtractTag
+}
+
+export type Cxx = {
+	embed: EmbedStyleTag
+	extract: ExtractStyleTag
 }

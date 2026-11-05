@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { collect as _collect } from '../src/build.js'
+import { Style } from '../src/index.js'
 
 let counter = 0
 
@@ -10,83 +11,76 @@ function getId() {
 	return `/test/integration-${counter}.tsx`
 }
 
+type Result =
+	| {
+			mode: 'embed'
+			styles: Record<string, string>
+			styleProps: { href: string; css: string; precedence: string }
+	  }
+	| { mode: 'extract'; styles: Record<string, string> }
+
 function collect(source: string) {
 	const { template } = _collect(source, getId(), {})
 	// eslint-disable-next-line no-new-func
-	const fn = new Function(`${template}\nreturn [css, styles, href]`) as () => [
-		string,
-		Record<string, string>,
-		string,
-	]
-	return fn()
+	return new Function(`${template}\nreturn button`)() as Result
 }
 
 describe('cxx transform + render', () => {
-	it('produces hashed class names that a component renders with', () => {
-		const [css, styles, href] = collect(`
-			const [css, styles, href] = cxx\`
+	it('renders an embed style from the generated descriptor', () => {
+		const result = collect(`
+			const button = cxx.embed\`
 				.btn { color: red; padding: 0.5rem 1rem; }
 			\`
 		`)
 
-		expect(css).toMatch(/\.[A-Za-z0-9_]+_btn\{color:red/)
-		expect(styles.btn).toMatch(/^[A-Za-z0-9_]+_btn$/)
-		expect(href).toMatch(/^cxx-[A-Za-z0-9_-]{12}$/)
+		expect(result.styles.btn).toMatch(/^[A-Za-z0-9_]+_btn$/)
+		expect(result.styleProps.mode).toBe('embed')
 
 		const html = renderToString(
-			<button className={styles.btn}>
-				<style href={href} precedence="medium">
-					{css}
-				</style>
+			<button className={result.styles.btn}>
+				<Style {...result.styleProps} media="(min-width: 600px)" />
 				click me
 			</button>,
 		)
-		expect(html).toContain(styles.btn)
-		expect(html).toContain(css)
+
+		expect(html).toContain(result.styles.btn)
+		expect(html).toContain(
+			result.styleProps.mode === 'embed' ? result.styleProps.css : '',
+		)
 	})
 
-	it('yields stable hrefs and class names so renders can dedup', () => {
-		const [_css, styles, _href] = collect(
-			`const [css, styles, href] = cxx\`.card { background: white; }\``,
-		)
+	it('does not return a style component contract for extracted styles', () => {
+		const result = collect(`const button = cxx.extract\`.card { background: white; }\``)
+
+		expect(result.mode).toBe('extract')
+		expect('styleProps' in result).toBe(false)
+		expect(result.styles.card).toMatch(/^[A-Za-z0-9_-]+_card$/)
+	})
+
+	it('yields stable class names so renders can dedup', () => {
+		const result = collect(`const button = cxx.embed\`.card { background: white; }\``)
 		const html = renderToString(
 			<>
-				<div className={styles.card}>a</div>
-				<div className={styles.card}>b</div>
+				<div className={result.styles.card}>a</div>
+				<div className={result.styles.card}>b</div>
 			</>,
 		)
-		const occurrences = html.split(`class="${styles.card}"`).length - 1
+		const occurrences = html.split(`class="${result.styles.card}"`).length - 1
 		expect(occurrences).toBe(2)
 	})
 
-	it('cxx.tag produces the same runtime shape as cxx', () => {
-		const [css, styles, href] = collect(
-			`const [css, styles, href] = cxx.tag<Test>('test')\`.x { color: blue; }\``,
-		)
-		expect(typeof css).toBe('string')
-		expect(typeof styles).toBe('object')
-		expect(typeof href).toBe('string')
-		expect(href).toMatch(/^cxx-/)
-	})
-
-	it('exports every destructured binding so another module can import them', async () => {
+	it('exports the result object so another module can import it', async () => {
 		const { template } = _collect(
-			`export const [css, styles, href] = cxx\`.a { color: red; }\``,
+			`export const button = cxx.embed\`.a { color: red; }\``,
 			getId(),
 			{},
 		)
 
-		// evaluate the transformed module the same way a bundler would
 		const mod = (await import(
 			`data:text/javascript,${encodeURIComponent(template)}`
-		)) as {
-			css: string
-			styles: Record<string, string>
-			href: string
-		}
+		)) as { button: Result }
 
-		expect(typeof mod.css).toBe('string')
-		expect(typeof mod.styles.a).toBe('string')
-		expect(mod.href).toMatch(/^cxx-/)
+		expect(typeof mod.button.styles.a).toBe('string')
+		expect(mod.button.styleProps.mode).toBe('embed')
 	})
 })

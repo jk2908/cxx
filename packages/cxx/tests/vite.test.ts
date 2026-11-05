@@ -16,10 +16,12 @@ describe('vite plugin', () => {
 	})
 
 	it('bails out of transform for node_modules', () => {
-		expect(plugin().transform('cxx`.a{}`', '/src/node_modules/x/index.js')).toBeNull()
+		expect(
+			plugin().transform('cxx.embed`.a{}`', '/src/node_modules/x/index.js'),
+		).toBeNull()
 	})
 
 	it('bails out of transform for virtual modules', () => {
-		expect(plugin().transform('cxx`.a{}`', '\0virtual:thing')).toBeNull()
+		expect(plugin().transform('cxx.embed`.a{}`', '\0virtual:thing')).toBeNull()
 	})
 })

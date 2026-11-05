@@ -4,7 +4,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { PluginConfig } from '../types.js'
-import { collect, seedTypes, writeTypesForFile } from '../build.js'
+import {
+	collect,
+	injectStyleImports,
+	seedTypes,
+	writeStyleSheets,
+	writeTypesForFile,
+} from '../build.js'
 import { Logger } from '../logger.js'
 
 const typeLogger = new Logger('cxx')
@@ -29,10 +35,12 @@ export function processFile(
 	}
 
 	const result = collect(source, resolvedFilePath, pluginConfig)
+	const imports = writeStyleSheets(resolvedFilePath, result.sheets)
+	const template = injectStyleImports(result.template, imports)
 
 	void writeTypesForFile(resolvedFilePath, result.tags)
 
-	return result
+	return { ...result, template }
 }
 
 const TURBOPACK_GLOB = '*.{tsx,jsx,ts,js}'
