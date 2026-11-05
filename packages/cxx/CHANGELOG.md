@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+### Fixes
+
+- `Style` uses `createElement` instead of the automatic JSX runtime, avoiding a Vite/RSC dependency-optimization error in development.
+
 ## 0.4.0
 
 ### Breaking
