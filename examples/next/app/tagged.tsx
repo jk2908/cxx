@@ -1,6 +1,6 @@
-import { cxx, type TaggedClasses } from '@jk2908/cxx'
+import { cxx, Style, type TaggedClasses } from '@jk2908/cxx'
 
-const [css, styles, href] = cxx.tag<TaggedClasses>('Tagged')`
+const button = cxx.embed.tag<TaggedClasses>('Tagged')`
   .tagged {
     color: green;
     font-size: 32px;
@@ -13,18 +13,16 @@ const [css, styles, href] = cxx.tag<TaggedClasses>('Tagged')`
 
 export function Tagged({ children }: { children: React.ReactNode }) {
 	return (
-		<div className={styles.tagged}>
+		<div className={button.styles.tagged}>
 			{children}
 
 			<br />
 
-			<span className={styles.thing}>This span creates a TypeScript error</span>
+			<span className={button.styles.thing}>This span creates a TypeScript error</span>
 
-			<span className={styles.thing2}>...but this one does not</span>
+			<span className={button.styles.thing2}>...but this one does not</span>
 
-			<style href={href} precedence="medium">
-				{css}
-			</style>
+			<Style {...button.styleProps} precedence="medium" />
 		</div>
 	)
 }

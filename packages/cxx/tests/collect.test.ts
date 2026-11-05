@@ -5,77 +5,92 @@ import { collect, DuplicateTagError, InvalidTagError, tagsToType } from '../src/
 let counter = 0
 
 /**
- * `collect` caches by id and source, not config, so each case uses a fresh id to make sure the
- * assertion on `config.typeSuffix` reflects that case rather than a cached result.
+ * `collect` caches by id and source, so each case uses a fresh id to make sure
+ * assertions reflect that case rather than a cached result.
  */
 function getId() {
 	counter += 1
 	return `/test/component-${counter}.tsx`
 }
 
-describe('collect — plain cxx template', () => {
-	it('returns a template that redeclares every destructured variable', () => {
-		const source = `
-			const [css, styles, href] = cxx\`
-				.header { color: red; }
-			\`
-		`
+function evaluate<Value>(template: string, name = 'button') {
+	// eslint-disable-next-line no-new-func
+	return new Function(`${template}\nreturn ${name}`)() as Value
+}
 
-		const { template, tags } = collect(source, getId(), {})
+type Result =
+	| {
+			mode: 'embed'
+			styles: Record<string, string>
+			styleProps: {
+				href: string
+				css: string
+				precedence: string
+			}
+	  }
+	| { mode: 'extract'; styles: Record<string, string> }
 
-		expect(template).toContain('const css = ')
-		expect(template).toContain('const styles = ')
-		expect(template).toContain('const href = ')
-		expect(tags.size).toBe(0)
-	})
-
-	it('emits a stable, hashed href prefixed with cxx-', () => {
-		const source = `const [css, styles, href] = cxx\`.a { color: red; }\``
-
-		const { template } = collect(source, getId(), {})
-
-		// pull `href` value out of template
-		const match = template.match(/const href = "cxx-([A-Za-z0-9_-]{12})"/)
-		expect(match).not.toBeNull()
-		expect(match?.[1]).toHaveLength(12)
-	})
-
-	it('produces deterministic hrefs for identical input', () => {
-		const src = `const [css, styles, href] = cxx\`.a { color: red; }\``
-		const id = getId()
-		const first = collect(src, id, {}).template
-		const second = collect(src, id, {}).template
-		expect(first).toBe(second)
-	})
-
-	it('handles partial destructuring (skip middle slot)', () => {
-		const source = `const [css, , href] = cxx\`.a { color: red; }\``
-		const { template } = collect(source, getId(), {})
-
-		expect(template).toMatch(/const css = "[^"]+"/)
-		expect(template).not.toContain('const styles = ')
-		expect(template).toContain('const href = ')
-	})
-
-	it('reads class names out of the CSS Modules exports', () => {
-		const source = `const [css, styles, href] = cxx\`
-			.header { display: flex; }
+describe('collect — embed cxx template', () => {
+	it('replaces the template with styles and embed style props', () => {
+		const source = `const button = cxx.embed\`
+			.header { color: red; }
 			.body { padding: 1rem; }
 		\``
 
-		const { template } = collect(source, getId(), {})
+		const { template, tags } = collect(source, getId(), {})
+		const result = evaluate<Result>(template)
 
-		// JSON-parse the emitted styles object literal
-		const stylesJson = template.match(/const styles = (\{[^]*?\})\nconst href/)![1]
-		const styles = JSON.parse(stylesJson)
-		expect(Object.keys(styles)).toEqual(expect.arrayContaining(['header', 'body']))
+		expect(tags.size).toBe(0)
+		expect(Object.keys(result.styles)).toEqual(expect.arrayContaining(['header', 'body']))
+		expect(result.styleProps.mode).toBe('embed')
+		expect(result.styleProps.precedence).toBe('default')
+		expect(result.styleProps.href).toMatch(/^cxx-[A-Za-z0-9_-]{12}$/)
+		expect(result.styleProps.css).toContain(result.styles.header)
+	})
+
+	it('supports destructuring the result object', () => {
+		const source = `const { styles, styleProps } = cxx.embed\`.card { color: red; }\``
+
+		const { template } = collect(source, getId(), {})
+		const result = evaluate<Result>(template, '{ styles, styleProps }')
+
+		expect(result.styles.card).toMatch(/^[A-Za-z0-9_-]+_card$/)
+		expect(result.styleProps.mode).toBe('embed')
+	})
+
+	it('emits a stable href for identical input', () => {
+		const source = `const button = cxx.embed\`.a { color: red; }\``
+		const id = getId()
+
+		expect(collect(source, id, {}).template).toBe(collect(source, id, {}).template)
+	})
+
+	it('supports cxx.embed explicitly', () => {
+		const source = `const button = cxx.embed\`.a { color: red; }\``
+		const { template } = collect(source, getId(), {})
+		const result = evaluate<Result>(template)
+
+		expect(result.styleProps.mode).toBe('embed')
 	})
 })
 
-describe('collect — cxx.tag', () => {
-	it('collects the tag with the default "Classes" suffix and reports its class keys', () => {
+describe('collect — extract cxx template', () => {
+	it('emits extract styles and a stylesheet', () => {
+		const source = `const button = cxx.extract\`.a { color: red; }\``
+		const { template, sheets } = collect(source, getId(), {})
+		const result = evaluate<Result>(template)
+
+		expect(result.mode).toBe('extract')
+		expect('styleProps' in result).toBe(false)
+		expect(sheets).toHaveLength(1)
+		expect(sheets[0].css).toContain(result.styles.a)
+	})
+})
+
+describe('collect — cxx.embed.tag', () => {
+	it('collects the tag and reports its class keys', () => {
 		const source = `
-			const [css, styles, href] = cxx.tag<HeroClasses>('hero')\`
+			const button = cxx.embed.tag<HeroClasses>('hero')\`
 				.hero { display: flex; }
 				.copy { max-width: 60ch; }
 			\`
@@ -87,40 +102,55 @@ describe('collect — cxx.tag', () => {
 		expect(tags.get('HeroClasses')?.toSorted()).toEqual(['copy', 'hero'])
 	})
 
+	it('supports extract tagged styles', () => {
+		const source = `const button = cxx.extract.tag<HeroClasses>('hero')\`.x { color: red; }\``
+
+		const { tags } = collect(source, getId(), {})
+
+		expect(tags.has('HeroClasses')).toBe(true)
+	})
+
 	it('respects a custom typeSuffix', () => {
-		const src = `const [css, styles, href] = cxx.tag<Hero>('hero')\`.x { color: red; }\``
-		expect([...collect(src, getId(), { typeSuffix: 'X' }).tags.keys()]).toEqual(['HeroX'])
+		const source = `const button = cxx.embed.tag<Hero>('hero')\`.x { color: red; }\``
+		expect([...collect(source, getId(), { typeSuffix: 'X' }).tags.keys()]).toEqual([
+			'HeroX',
+		])
 	})
 
 	it('omits the suffix when typeSuffix is false', () => {
-		const src = `const [css, styles, href] = cxx.tag<Hero>('hero')\`.x { color: red; }\``
-		expect([...collect(src, getId(), { typeSuffix: false }).tags.keys()]).toEqual([
+		const source = `const button = cxx.embed.tag<Hero>('hero')\`.x { color: red; }\``
+		expect([...collect(source, getId(), { typeSuffix: false }).tags.keys()]).toEqual([
 			'Hero',
 		])
 	})
 
 	it('pascalises kebab-case tags before appending the suffix', () => {
-		const src = `const [css, styles, href] = cxx.tag<B>('marketing-banner')\`.x {} \``
-		const { tags } = collect(src, getId(), {})
+		const source = `const button = cxx.embed.tag<B>('marketing-banner')\`.x {} \``
+		const { tags } = collect(source, getId(), {})
 		expect([...tags.keys()]).toEqual(['MarketingBannerClasses'])
 	})
 
 	it('throws DuplicateTagError when the same tag is collected twice in one file', () => {
-		const src = `
-			const [a] = cxx.tag<A>('t')\`.x {} \`
-			const [b] = cxx.tag<A>('t')\`.y {} \`
+		const source = `
+			const a = cxx.embed.tag<A>('t')\`.x {} \`
+			const b = cxx.embed.tag<A>('t')\`.y {} \`
 		`
-		expect(() => collect(src, getId(), {})).toThrow(DuplicateTagError)
-		expect(() => collect(src, getId(), {})).toThrow(/TClasses has already been seen/)
+		expect(() => collect(source, getId(), {})).toThrow(DuplicateTagError)
+		expect(() => collect(source, getId(), {})).toThrow(/TClasses has already been seen/)
+	})
+
+	it('rejects tag names that do not form a valid identifier', () => {
+		const source = `const button = cxx.embed.tag<X>('a.b')\`.x { color: red; }\``
+
+		expect(() => collect(source, getId(), {})).toThrow(InvalidTagError)
 	})
 
 	it('keeps the cache stable when called with identical source', () => {
-		const src = `const [css, styles, href] = cxx.tag<X>('x')\`.x { color: red; }\``
+		const source = `const button = cxx.embed.tag<X>('x')\`.x { color: red; }\``
 		const id = getId()
-		const first = collect(src, id, {})
-		const second = collect(src, id, {})
+		const first = collect(source, id, {})
+		const second = collect(source, id, {})
 
-		// second call returns the cached object; same template and tags reference
 		expect(second.template).toBe(first.template)
 		expect(second.tags).toBe(first.tags)
 	})
@@ -129,42 +159,34 @@ describe('collect — cxx.tag', () => {
 describe('collect — emitted code safety', () => {
 	it('emits CSS as a JSON string literal so escapes are not re-interpreted', () => {
 		const source =
-			'const [css] = cxx`.a{content:"\\f101"} .b{content:"\\e900"} .c{content:"\\2014"}`'
+			'const button = cxx.embed`.a{content:"\\f101"} .b{content:"\\e900"} .c{content:"\\2014"}`'
 
 		const { template } = collect(source, getId(), {})
+		const result = evaluate<Result>(template)
 
-		// the old output interpolated raw CSS into a template literal, which turned
-		// \f101 into a form feed, \e900 into the text e900 and \2014 into a syntax error
-		expect(template).toContain('const css = "')
-
-		// and the emitted source still evaluates to the decoded CSS
-		// eslint-disable-next-line no-new-func
-		const css = new Function(`${template}\nreturn css`)() as string
-		expect(css).toContain('\uf101')
-		expect(css).toContain('\ue900')
-		expect(css).toContain('\u2014')
+		expect(result.styleProps.css).toContain('\uf101')
+		expect(result.styleProps.css).toContain('\ue900')
+		expect(result.styleProps.css).toContain('\u2014')
 	})
 
-	it('preserves the export keyword for every destructured binding', () => {
-		const source = 'export const [css, styles, href] = cxx`.a{color:red}`'
+	it('preserves the export keyword', () => {
+		const source = 'export const button = cxx.embed`.a{color:red}`'
 
 		const { template } = collect(source, getId(), {})
 
-		expect(template).toContain('export const css =')
-		expect(template).toContain('export const styles =')
-		expect(template).toContain('export const href =')
+		expect(template).toContain('export const button = {')
 	})
 
 	it('emits a source map that points back at the original file', () => {
 		const id = getId()
 		const source = [
-			'const [css, styles, href] = cxx`',
+			'const button = cxx.embed`',
 			'  .a {',
 			'    color: red;',
 			'  }',
 			'`',
 			'',
-			'console.log(css)',
+			'console.log(button)',
 		].join('\n')
 
 		const { map } = collect(source, id, {})
@@ -173,12 +195,6 @@ describe('collect — emitted code safety', () => {
 		expect(map?.sources).toEqual([id])
 		expect(map?.sourcesContent?.[0]).toBe(source)
 		expect(map?.mappings.length).toBeGreaterThan(0)
-	})
-
-	it('rejects tag names that do not form a valid identifier', () => {
-		const source = `const [css] = cxx.tag<X>('a.b')\`.x { color: red; }\``
-
-		expect(() => collect(source, getId(), {})).toThrow(InvalidTagError)
 	})
 })
 
@@ -202,7 +218,6 @@ describe('tagsToType', () => {
 	})
 
 	it('joins class keys sorted by ascending length', () => {
-		// lengths 4, 3, 1 → ascending order: 'x', 'uno', 'hero'
 		const tags = new Map([['Hero', ['hero', 'uno', 'x']]])
 		expect(tagsToType(tags).replace(/\s+/g, ' ').trim()).toBe(
 			"export type Hero = 'x' | 'uno' | 'hero'",

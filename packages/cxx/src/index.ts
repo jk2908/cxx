@@ -1,6 +1,23 @@
-import type { Cxx, Result } from './types.js'
+import type {
+	Cxx,
+	EmbedResult,
+	EmbedStyleTag,
+	ExtractResult,
+	ExtractStyleTag,
+} from './types.js'
 
-export type { Cxx, Result, Tag } from './types.js'
+export { Style } from './style.js'
+export type {
+	Cxx,
+	EmbedResult,
+	EmbedStyleDescriptor,
+	EmbedStyleTag,
+	ExtractResult,
+	ExtractStyleTag,
+	Result,
+	StyleMode,
+	StyleProps,
+} from './types.js'
 
 /**
  * Hit when a `cxx` template reaches runtime, which means the build transform did
@@ -9,8 +26,8 @@ export type { Cxx, Result, Tag } from './types.js'
  * @example
  * ```ts
  * // no cxx plugin configured
- * const [css, styles, href] = cxx`.a { color: red; }`
- * // Error: cxx template was not transformed ...
+ * const button = cxx.embed`.a { color: red; }`
+ * // error: cxx template was not transformed ...
  * ```
  */
 function untransformed(): never {
@@ -19,15 +36,25 @@ function untransformed(): never {
 	)
 }
 
+function tag<_ClassName extends string = string>(_: string) {
+	return (_strings: TemplateStringsArray): never => untransformed()
+}
+
+function embedTag(): EmbedStyleTag {
+	return Object.assign((_: TemplateStringsArray): EmbedResult => untransformed(), { tag })
+}
+
+function extractTag(): ExtractStyleTag {
+	return Object.assign((_: TemplateStringsArray): ExtractResult => untransformed(), {
+		tag,
+	})
+}
+
+const embed = embedTag()
+const extract = extractTag()
+
 /**
- * Build-time template tag placeholder used by the transform to emit CSS, classes and href values.
+ * Build-time template tag namespace used by the transform to emit class maps
+ * and style descriptors.
  */
-export const cxx: Cxx = Object.assign(
-	(_: TemplateStringsArray): Result => untransformed(),
-	{
-		tag:
-			<ClassName extends string = string>(_: string) =>
-			(_strings: TemplateStringsArray): Result<ClassName> =>
-				untransformed(),
-	},
-)
+export const cxx: Cxx = { embed, extract }

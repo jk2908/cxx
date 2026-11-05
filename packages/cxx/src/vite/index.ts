@@ -7,9 +7,11 @@ import type { PluginConfig } from '../types.js'
 import {
 	collect,
 	flushTypes,
+	injectStyleImports,
 	refreshFile,
 	seedTypes,
 	SOURCE_EXTENSIONS,
+	writeStyleSheets,
 	writeTypesForFile,
 } from '../build.js'
 import { GENERATED_DIR } from '../config.js'
@@ -121,15 +123,19 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 
 			if (!SOURCE_EXTENSIONS.has(path.extname(cleanId))) return null
 
-			const { template, tags, map } = collect(code, cleanId, pluginConfig)
+			const result = collect(code, cleanId, pluginConfig)
 
-			if (template === code) return null
+			if (result.template === code) return null
 
-			void writeTypesForFile(resolveWatchFile(cleanId), tags)
+			const file = resolveWatchFile(cleanId)
+			const imports = writeStyleSheets(file, result.sheets)
+			const template = injectStyleImports(result.template, imports)
+
+			void writeTypesForFile(file, result.tags)
 
 			return {
 				code: template,
-				map,
+				map: result.map,
 			}
 		},
 		configureServer(server: ViteDevServer) {

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- `cxx` is now a namespace: use `cxx.embed` or `cxx.extract`.
+- `cxx.embed` returns `{ styles, styleProps }` instead of `[css, styles, href]`.
+- Embedded styles are rendered with the `Style` component rather than a hand-written `<style>` element.
+
+### Features
+
+- Added `cxx.extract` for bundler-managed stylesheet output.
+- Added the `Style` component for embedded styles; extracted styles need no style component.
+- `styleProps` includes `precedence: 'default'`, which can be overridden at the `Style` call site.
+
 ## 0.3.7
 
 - Swept orphaned temporary files when seeding, so an interrupted write cannot leave `.tmp` files behind

@@ -4,7 +4,14 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { flushTypes, maybeWrite, seedTypes, writeTypesForFile } from '../src/build.js'
+import {
+	flushTypes,
+	injectStyleImports,
+	maybeWrite,
+	seedTypes,
+	writeStyleSheets,
+	writeTypesForFile,
+} from '../src/build.js'
 
 describe('maybeWrite', () => {
 	let dir: string
@@ -54,8 +61,8 @@ describe('writeTypesForFile', () => {
 		const fileA = path.join(dir, 'a.tsx')
 		const fileB = path.join(dir, 'b.tsx')
 
-		await fs.writeFile(fileA, 'const [css] = cxx`.a{}`')
-		await fs.writeFile(fileB, 'const [css] = cxx`.b{}`')
+		await fs.writeFile(fileA, 'const button = cxx.embed`.a{}`')
+		await fs.writeFile(fileB, 'const button = cxx.embed`.b{}`')
 
 		await writeTypesForFile(fileA, new Map([['AClasses', ['a']]]))
 		await writeTypesForFile(fileB, new Map([['BClasses', ['b']]]))
@@ -96,7 +103,7 @@ describe('writeTypesForFile', () => {
 		const file = path.join(dir, 'a.tsx')
 		const typeFile = path.join(dir, '.cxx', 'index.d.ts')
 
-		await fs.writeFile(file, 'const [css] = cxx`.a{}`')
+		await fs.writeFile(file, 'const button = cxx.embed`.a{}`')
 		await writeTypesForFile(file, new Map([['AClasses', ['a']]]))
 		await flushTypes()
 
@@ -116,9 +123,9 @@ describe('writeTypesForFile', () => {
 		const fileC = path.join(dir, 'c.tsx')
 
 		await Promise.all([
-			fs.writeFile(fileA, 'const [css] = cxx`.a{}`'),
-			fs.writeFile(fileB, 'const [css] = cxx`.b{}`'),
-			fs.writeFile(fileC, 'const [css] = cxx`.c{}`'),
+			fs.writeFile(fileA, 'const button = cxx.embed`.a{}`'),
+			fs.writeFile(fileB, 'const button = cxx.embed`.b{}`'),
+			fs.writeFile(fileC, 'const button = cxx.embed`.c{}`'),
 		])
 
 		const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -141,5 +148,23 @@ describe('writeTypesForFile', () => {
 		} finally {
 			spy.mockRestore()
 		}
+	})
+})
+
+describe('style sheet generation', () => {
+	it('writes sheets and injects imports after a module directive', async () => {
+		const file = path.join(
+			await fs.mkdtemp(path.join(os.tmpdir(), 'cxx-styles-')),
+			'component.tsx',
+		)
+		const imports = writeStyleSheets(file, [{ hash: 'abc', css: '.a{}' }])
+
+		expect(imports).toEqual(['./.cxx/abc.css'])
+		expect(
+			await fs.readFile(path.join(path.dirname(file), '.cxx/abc.css'), 'utf-8'),
+		).toBe('.a{}')
+		expect(injectStyleImports("'use client'\nconst a = 1", imports)).toBe(
+			'\'use client\'\nimport "./.cxx/abc.css";\n\nconst a = 1',
+		)
 	})
 })
