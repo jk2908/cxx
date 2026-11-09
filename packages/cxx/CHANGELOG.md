@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2
+
+### Docs
+
+- Simplified the README and updated the examples to destructure `styles` and `styleProps`.
+
 ## 0.4.1
 
 ### Fixes
