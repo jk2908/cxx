@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0
+
+### Breaking
+
+- The generated `.cxx` layout changed. Types, manifests, and extracted sheets now live together under the project root `.cxx` directory. Delete `.cxx` after upgrading; old per-directory `.cxx`, `records`, `sheets`, and `tags` files are no longer read.
+- `processFile` now takes `projectRoot` before the plugin config. The Next loader passes it through automatically.
+- `dist/build.js` is no longer emitted. It was not an exported subpath.
+
+### Features
+
+- Replaced the regex transform with `oxc-parser`. Comments, strings, escaped backticks, import aliases, bracket access, and nested type arguments are now handled correctly.
+- Interpolation and non-literal tag names now fail with `file:line:column` errors instead of confusing CSS or runtime failures.
+- Per-file manifests replace separate type partials and style manifests.
+- Extracted sheets live in the root `.cxx` directory and deduplicate globally by content hash.
+- Sheet and temp-file cleanup runs once at seed/build end instead of on every transform.
+
+### Fixes
+
+- `cxx` templates in comments and strings are no longer rewritten into invalid code.
+- Generated types follow the Vite project root or Next app directory instead of `process.cwd()`.
+- Next loader workers no longer race to delete each other's sheets.
+
+### Docs
+
+- Simplified the README and updated examples to destructure `styles` and `styleProps`.
+
 ## 0.4.2
 
 ### Docs
