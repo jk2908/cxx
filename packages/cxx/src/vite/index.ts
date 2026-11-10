@@ -4,20 +4,10 @@ import path from 'node:path'
 import { type Plugin, type ResolvedConfig, type ViteDevServer } from 'vite'
 
 import type { PluginConfig } from '../types.js'
-import {
-	collect,
-	flushTypes,
-	injectStyleImports,
-	refreshFile,
-	seedTypes,
-	SOURCE_EXTENSIONS,
-	writeStyleSheets,
-	writeTypesForFile,
-} from '../build.js'
-import { GENERATED_DIR } from '../config.js'
+import { Artifacts } from '../artifacts.js'
+import { GENERATED_DIR, SOURCE_EXTENSIONS } from '../config.js'
 import { Logger } from '../logger.js'
-
-type WatchEvent = 'add' | 'change' | 'unlink'
+import { collect, injectStyleImports } from '../transform.js'
 
 function normaliseWatchPath(p: string) {
 	return p.replace(/\\/g, '/')
@@ -28,25 +18,19 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 
 	// resolved from Vite's root in `configResolved`, not from `process.cwd()`
 	let watchRoot = normaliseWatchPath(process.cwd())
+	let artifacts: Artifacts
 	let seeded = false
-
-	// realpath is synchronous, so cache it per directory to keep it off the transform hot path
-	const realpaths = new Map<string, string>()
 
 	function resolveWatchFile(filePath: string) {
 		const absolutePath = path.resolve(watchRoot, filePath)
 		const parentPath = path.dirname(absolutePath)
 
-		let resolvedParentPath = realpaths.get(parentPath)
+		let resolvedParentPath: string
 
-		if (resolvedParentPath === undefined) {
-			try {
-				resolvedParentPath = normaliseWatchPath(realpathSync.native(parentPath))
-			} catch {
-				resolvedParentPath = normaliseWatchPath(parentPath)
-			}
-
-			realpaths.set(parentPath, resolvedParentPath)
+		try {
+			resolvedParentPath = normaliseWatchPath(realpathSync.native(parentPath))
+		} catch {
+			resolvedParentPath = normaliseWatchPath(parentPath)
 		}
 
 		return normaliseWatchPath(path.join(resolvedParentPath, path.basename(absolutePath)))
@@ -69,32 +53,14 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 		return null
 	}
 
-	async function handleEvent(event: WatchEvent, file: string) {
-		if (event === 'unlink') {
-			await writeTypesForFile(file, new Map())
-		} else {
-			await refreshFile(file, pluginConfig)
-		}
+	function onWatch(p: string) {
+		const file = watchedFile(p)
+		if (!file) return
 
-		logger.info(`updated types from ${file}`)
-	}
-
-	function onWatch(event: WatchEvent) {
-		return (p: string) => {
-			const file = watchedFile(p)
-			if (!file) return
-
-			void handleEvent(event, file).catch(err => {
-				logger.error(`failed to update types from ${file}`, err)
-			})
-		}
-	}
-
-	async function seed() {
-		if (seeded) return
-		seeded = true
-
-		await seedTypes(watchRoot, pluginConfig)
+		// add, change and unlink all update the manifest; a missing file simply loses it
+		void artifacts.update(file, pluginConfig).catch(err => {
+			logger.error(`failed to update cxx artifacts from ${file}`, err)
+		})
 	}
 
 	return {
@@ -109,10 +75,14 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 				watchRoot = normaliseWatchPath(root)
 			}
 
-			realpaths.clear()
+			// artifacts belong to the project root, not to a wider watch scope
+			artifacts = new Artifacts(config.root)
 		},
 		async buildStart() {
-			await seed()
+			if (seeded) return
+			seeded = true
+
+			await artifacts.seed(watchRoot, pluginConfig)
 		},
 		transform(code, id) {
 			if (id.startsWith('\0') || id.includes('/node_modules/')) return null
@@ -128,10 +98,8 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 			if (result.template === code) return null
 
 			const file = resolveWatchFile(cleanId)
-			const imports = writeStyleSheets(file, result.sheets)
+			const imports = artifacts.write(file, result.tags, result.sheets)
 			const template = injectStyleImports(result.template, imports)
-
-			void writeTypesForFile(file, result.tags)
 
 			return {
 				code: template,
@@ -139,15 +107,10 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 			}
 		},
 		configureServer(server: ViteDevServer) {
-			logger.info('Watching for changes...')
-
-			server.watcher
-				.on('add', onWatch('add'))
-				.on('change', onWatch('change'))
-				.on('unlink', onWatch('unlink'))
+			server.watcher.on('add', onWatch).on('change', onWatch).on('unlink', onWatch)
 		},
 		async writeBundle() {
-			await flushTypes()
+			await artifacts.flush({ sweep: true })
 		},
 	} satisfies Plugin
 }

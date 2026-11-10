@@ -1,8 +1,8 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { collect as _collect } from '../src/build.js'
 import { Style } from '../src/index.js'
+import { collect as _collect } from '../src/transform.js'
 
 let counter = 0
 

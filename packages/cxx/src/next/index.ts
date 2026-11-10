@@ -4,27 +4,26 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { PluginConfig } from '../types.js'
-import {
-	collect,
-	injectStyleImports,
-	seedTypes,
-	writeStyleSheets,
-	writeTypesForFile,
-} from '../build.js'
+import { Artifacts } from '../artifacts.js'
 import { Logger } from '../logger.js'
+import { collect, injectStyleImports } from '../transform.js'
 
-const typeLogger = new Logger('cxx')
+const logger = new Logger('cxx')
 
 const nextDir = path.dirname(fileURLToPath(import.meta.url))
 const loader = path.join(nextDir, 'cxx-loader.cjs')
 
+// loaders can run in worker processes, so each one keeps its own artifact state
+let loaderArtifacts: Artifacts
+
 /**
- * Transform one module and persist its tag types. Deleted files are pruned from the types on the
- * next rebuild, since `readPartials` drops any partial whose source is gone.
+ * Transform one module and persist its manifest. The next flush drops manifests whose source is
+ * gone, so deleted files do not linger in the generated types or sheets.
  */
 export function processFile(
 	source: string,
 	filePath: string,
+	projectRoot: string,
 	pluginConfig: PluginConfig,
 ) {
 	const resolvedFilePath = path.resolve(filePath)
@@ -34,34 +33,45 @@ export function processFile(
 		return { template: source, tags: new Map(), map: null }
 	}
 
-	const result = collect(source, resolvedFilePath, pluginConfig)
-	const imports = writeStyleSheets(resolvedFilePath, result.sheets)
-	const template = injectStyleImports(result.template, imports)
+	// Turbopack runs loaders in separate processes, so this instance may be distinct from the one
+	// `withCxx` seeded. It only flushes types, sheet sweeps stay with the seed/build process
+	loaderArtifacts ??= new Artifacts(projectRoot)
 
-	void writeTypesForFile(resolvedFilePath, result.tags)
+	const result = collect(source, resolvedFilePath, pluginConfig)
+	const imports = loaderArtifacts.write(resolvedFilePath, result.tags, result.sheets)
+	const template = injectStyleImports(result.template, imports)
 
 	return { ...result, template }
 }
 
+type WebpackConfig = { module?: { rules?: unknown[] } }
+
 const TURBOPACK_GLOB = '*.{tsx,jsx,ts,js}'
 
 export function withCxx(nextConfig: NextConfig = {}, pluginConfig: PluginConfig = {}) {
+	// the Next app directory is the project root the generated artifacts belong to
+	const artifacts = new Artifacts(process.cwd())
+
 	if (process.env['NODE_ENV'] !== 'production') {
 		const seedRoot = pluginConfig.watch?.root ?? process.cwd()
 
-		void seedTypes(seedRoot, pluginConfig).catch(err =>
-			typeLogger.error('failed to seed cxx types', err),
-		)
+		void artifacts.seed(seedRoot, pluginConfig).catch(err => {
+			logger.error('failed to seed cxx artifacts', err)
+		})
 	}
 
 	const loaderItem = {
 		loader,
 		options: {
+			projectRoot: artifacts.root,
 			pluginConfig,
 		},
 	}
 
 	const currentRule = nextConfig.turbopack?.rules?.[TURBOPACK_GLOB]
+	const rule = Array.isArray(currentRule)
+		? [...currentRule, loaderItem]
+		: { ...currentRule, loaders: [...(currentRule?.loaders ?? []), loaderItem] }
 	const userWebpack = nextConfig.webpack
 
 	return {
@@ -70,23 +80,13 @@ export function withCxx(nextConfig: NextConfig = {}, pluginConfig: PluginConfig 
 			...nextConfig.turbopack,
 			rules: {
 				...nextConfig.turbopack?.rules,
-				[TURBOPACK_GLOB]: Array.isArray(currentRule)
-					? [...currentRule, loaderItem]
-					: currentRule
-						? {
-								...currentRule,
-								loaders: [...(currentRule.loaders ?? []), loaderItem],
-							}
-						: { loaders: [loaderItem] },
+				[TURBOPACK_GLOB]: rule,
 			},
 		},
 		// webpack builds (Next without `--turbopack`) would otherwise silently skip the transform
 		webpack(config: unknown, context: unknown) {
-			const next = (
-				userWebpack ? userWebpack(config as never, context as never) : config
-			) as {
-				module?: { rules?: unknown[] }
-			}
+			const next = (userWebpack?.(config as never, context as never) ??
+				config) as WebpackConfig
 
 			next.module ??= {}
 			next.module.rules ??= []

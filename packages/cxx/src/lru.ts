@@ -1,6 +1,6 @@
 export const CACHE_MAX_SIZE = 100
 
-export class LruCache<T> {
+export class LruCache<T extends object> {
 	#cache: Map<string, T> = new Map()
 	#maxSize: number
 
@@ -17,10 +17,15 @@ export class LruCache<T> {
 	 * be evicted while still actively referenced.
 	 */
 	get(key: string) {
-		const cached = this.#cache.get(key)
-		if (this.#cache.has(key)) this.set(key, cached as T)
+		const value = this.#cache.get(key)
 
-		return cached
+		// cached values are objects, so undefined means the key is absent
+		if (value === undefined) return
+
+		this.#cache.delete(key)
+		this.#cache.set(key, value)
+
+		return value
 	}
 
 	/**

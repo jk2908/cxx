@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { collect, DuplicateTagError, InvalidTagError, tagsToType } from '../src/build.js'
+import { tagsToType } from '../src/artifacts.js'
+import {
+	collect,
+	DuplicateTagError,
+	InterpolationError,
+	InvalidTagError,
+	InvalidTagNameError,
+} from '../src/transform.js'
 
 let counter = 0
 
@@ -195,6 +202,72 @@ describe('collect — emitted code safety', () => {
 		expect(map?.sources).toEqual([id])
 		expect(map?.sourcesContent?.[0]).toBe(source)
 		expect(map?.mappings.length).toBeGreaterThan(0)
+	})
+})
+
+describe('collect — syntax awareness', () => {
+	it('ignores templates in comments and strings', () => {
+		const source = [
+			'// const a = cxx.embed`.a{color:red}`',
+			'const docs = "use cxx.embed`.a{}`"',
+			'const value = 1',
+		].join('\n')
+
+		const result = collect(source, getId(), {})
+
+		expect(result.template).toBe(source)
+		expect(result.tags.size).toBe(0)
+		expect(result.sheets).toHaveLength(0)
+	})
+
+	it('supports string-literal bracket access', () => {
+		const source = "const button = cxx['embed']`.a { color: red; }`"
+
+		const { template } = collect(source, getId(), {})
+
+		expect(template).toContain("mode: 'embed'")
+	})
+
+	it('supports an imported alias', () => {
+		const source = [
+			"import { cxx as styles } from '@jk2908/cxx'",
+			'const button = styles.embed`.a { color: red; }`',
+		].join('\n')
+
+		const { template } = collect(source, getId(), {})
+
+		expect(template).toContain("mode: 'embed'")
+		expect(template).not.toContain('styles.embed')
+	})
+
+	it('handles escaped backticks in CSS', () => {
+		const source = 'const button = cxx.embed`.a{content:"\\`"}`'
+		const { template } = collect(source, getId(), {})
+		const result = evaluate<Result>(template)
+
+		expect(result.styles.a).toBeDefined()
+	})
+
+	it('reports interpolation with a location', () => {
+		const source = 'const button = cxx.embed`.a { color: ${color}; }`'
+		const id = getId()
+
+		expect(() => collect(source, id, {})).toThrow(InterpolationError)
+		expect(() => collect(source, id, {})).toThrow(/interpolation at .*:1:\d+/)
+	})
+
+	it('parses nested type arguments in tag calls', () => {
+		const source = 'const button = cxx.embed.tag<Foo<Bar>>("hero")`.a { color: red; }`'
+
+		const { tags } = collect(source, getId(), {})
+
+		expect(tags.has('HeroClasses')).toBe(true)
+	})
+
+	it('rejects a non-literal tag name', () => {
+		const source = 'const name = "hero"; const button = cxx.embed.tag(name)`.a{}`'
+
+		expect(() => collect(source, getId(), {})).toThrow(InvalidTagNameError)
 	})
 })
 
