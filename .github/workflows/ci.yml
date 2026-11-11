@@ -18,3 +18,9 @@ jobs:
         working-directory: packages/cxx
       - run: bun run build
         working-directory: packages/cxx
+      - run: bun x vite build
+        working-directory: examples/vite
+      - run: bun x next build --turbopack
+        working-directory: examples/next
+      - run: bun x next build --webpack
+        working-directory: examples/next
