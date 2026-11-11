@@ -48,8 +48,6 @@ export function Button() {
 }
 ```
 
-The marker returns a plain object, so destructuring at module scope is the normal pattern.
-
 `cxx.embed` and `cxx.extract` are build-time markers. Enable the Vite or Next integration so they are replaced before runtime. You can't interpolate strings inside the template.
 
 `cxx.embed` returns `{ styles, styleProps }`:
