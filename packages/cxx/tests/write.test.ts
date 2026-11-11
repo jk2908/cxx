@@ -173,6 +173,29 @@ describe('style sheet generation', () => {
 		)
 	})
 
+	it('inserts imports after framework and compiler directives', () => {
+		const imports = ['./.cxx/a.css']
+		const directives = [
+			"'use client'",
+			"'use server'",
+			"'use cache'",
+			"'use cache: private'",
+			"'use memo'",
+			"'use no memo'",
+			"'use strict'",
+		]
+
+		for (const directive of directives) {
+			expect(injectStyleImports(`${directive}\nconst a = 1`, imports)).toBe(
+				`${directive}\nimport "./.cxx/a.css";\n\nconst a = 1`,
+			)
+		}
+
+		expect(injectStyleImports("'use client'\n'use memo'\nconst a = 1", imports)).toBe(
+			"'use client'\n'use memo'\nimport \"./.cxx/a.css\";\n\nconst a = 1",
+		)
+	})
+
 	it('removes sheets that no source file references any more', async () => {
 		const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cxx-styles-'))
 		const fileA = path.join(dir, 'a.tsx')

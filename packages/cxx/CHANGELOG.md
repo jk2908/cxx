@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Preserve React Compiler and Next cache directives such as `'use memo'`, `'use no memo'`, and `'use cache'` when injecting stylesheet imports.
+
 ## 0.6.1
 
 ### Docs

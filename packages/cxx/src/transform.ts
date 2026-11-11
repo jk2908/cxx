@@ -350,10 +350,9 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	return result
 }
 
-// `'use client'` is the supported case. `'use server'` is preserved defensively; injecting an
-// import before a directive invalidates it, even if CSS in a server-action module is unlikely
-const USE_DIRECTIVE =
-	/^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*(['"])use (?:client|server)\1;?/
+// Keep every leading `use ...` directive first: client, server, cache, memo, no memo, etc.
+// Injecting an import before one would stop it being a directive.
+const USE_DIRECTIVE = /^(?:(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*(['"])use [^'"\n]+\1;?)+/
 
 /**
  * Insert style imports after any leading module directive.
