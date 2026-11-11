@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.6.2
 
 ### Fixes
 
 - Preserve React Compiler and Next cache directives such as `'use memo'`, `'use no memo'`, and `'use cache'` when injecting stylesheet imports.
+
+### Docs
+
+- Destructure marker results at module scope in the README examples.
 
 ## 0.6.1
 
