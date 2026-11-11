@@ -33,6 +33,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Extract release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#@jk2908/cxx@}"
+          awk -v version="$VERSION" '
+            $0 == "## " version { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' packages/cxx/CHANGELOG.md > release-notes.md
+          test -s release-notes.md
       - uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
