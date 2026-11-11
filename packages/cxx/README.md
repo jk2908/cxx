@@ -31,7 +31,7 @@ Without it, the generated types and tag inference are not part of the TypeScript
 ```tsx
 import { cxx, Style } from '@jk2908/cxx'
 
-const button = cxx.embed`
+const { styles, styleProps } = cxx.embed`
 	.button {
 		display: inline-flex;
 		gap: 0.75rem;
@@ -39,9 +39,6 @@ const button = cxx.embed`
 `
 
 export function Button() {
-	// class map and style descriptor
-	const { styles, styleProps } = button
-
 	return (
 		<button className={styles.button}>
 			<Style {...styleProps} />
@@ -50,6 +47,8 @@ export function Button() {
 	)
 }
 ```
+
+The marker returns a plain object, so destructuring at module scope is the normal pattern.
 
 `cxx.embed` and `cxx.extract` are build-time markers. Enable the Vite or Next integration so they are replaced before runtime. You can't interpolate strings inside the template.
 
@@ -73,7 +72,7 @@ Named blocks generate class-key types, and the tag functions infer them from the
 ```tsx
 import { cxx, Style } from '@jk2908/cxx'
 
-const hero = cxx.embed.tag('hero')`
+const { styles, styleProps } = cxx.embed.tag('hero')`
 	.hero {
 		display: flex;
 	}
@@ -84,8 +83,6 @@ const hero = cxx.embed.tag('hero')`
 `
 
 export function Hero() {
-	const { styles, styleProps } = hero
-
 	return (
 		<section className={styles.hero}>
 			<Style {...styleProps} />
@@ -102,7 +99,7 @@ You can also pass the type explicitly. The generated type is exported from the p
 ```tsx
 import { cxx, type HeroClasses } from '@jk2908/cxx'
 
-const hero = cxx.embed.tag<HeroClasses>('hero')`
+const { styles } = cxx.embed.tag<HeroClasses>('hero')`
 	.hero {
 		display: flex;
 	}
@@ -121,7 +118,7 @@ There is no implicit default, choose how the CSS is delivered:
 
 ```tsx
 // CSS stays in the module and renders through <Style />
-const button = cxx.embed`
+const { styles, styleProps } = cxx.embed`
 	.button { color: red; }
 `
 ```
@@ -129,14 +126,11 @@ const button = cxx.embed`
 `cxx.embed` keeps the CSS text in the module and renders it as a hoisted `<style>` element via `<Style />`.
 
 ```tsx
-const button = cxx.extract`
+const { styles } = cxx.extract`
 	.button { color: red; }
 `
 
 export function Button() {
-	// extract returns only the class map
-	const { styles } = button
-
 	return <button className={styles.button}>Click me</button>
 }
 ```
