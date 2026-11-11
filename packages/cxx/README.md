@@ -2,11 +2,21 @@
 
 Build-time CSS template tag utilities for React 19.
 
+## Why
+
+- CSS Modules without a separate stylesheet file.
+- Typed class keys generated from the tagged block.
+- Two delivery modes: bundler-extracted CSS, or React 19 style hoisting.
+
 ## Install
 
 ```sh
-npm install @jk2908/cxx lightningcss react react-dom
+npm install @jk2908/cxx react react-dom
 ```
+
+## Requirements
+
+Node.js 20 or newer, React 19, and either Vite 4–8 or Next 15–16 with the App Router.
 
 ## Usage
 
@@ -83,7 +93,7 @@ The name passed to `cxx.embed.tag(...)` becomes the exported type name: the `typ
 
 Import generated types from the package root, not a separate generated subpath.
 
-`.cxx` is generated, so add it to your `.gitignore`.
+`.cxx` is generated, so add it to your `.gitignore`. It contains `index.d.ts`, the per-file manifests, and extracted stylesheets.
 
 ## Embedded and extracted styles
 
@@ -113,7 +123,13 @@ export function Button() {
 
 `cxx.extract` hands the CSS to the bundler as a stylesheet. It returns only `{ mode: 'extract', styles }` — no `styleProps`, and no `<Style />` to render.
 
-With both modes, the Vite and Next integrations write a CSS import next to the source file. The bundler handles emitting the stylesheet, chunk association, preload, and HMR.
+With both modes, the integration injects an import into the module, pointing at the generated sheet in `.cxx`. The bundler handles emitting the stylesheet, chunk association, preload, and HMR.
+
+## Limitations
+
+- No interpolation. `${...}` is rejected at build time; use CSS custom properties for values that change.
+- The Next integration targets the App Router.
+- `.cxx` is generated in the project and should be gitignored.
 
 ## Vite
 
@@ -132,6 +148,8 @@ The transform always emits minified CSS and CSS Modules class mappings.
 `typeSuffix` sets the suffix for generated type names. It defaults to `'Classes'`; set it to `false` to omit it.
 
 ## Next
+
+Supported with the Next App Router.
 
 ```ts
 import { withCxx } from '@jk2908/cxx/next'
@@ -161,7 +179,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 ## Syntax highlighting
 
-The [`vscode-cxx`](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) extension adds syntax highlighting for `cxx.embed.tag()` and `cxx.extract.tag()` tagged templates in VS Code. See its [README](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) for install instructions.
+The [`vscode-cxx`](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) extension adds syntax highlighting for `cxx.embed` and `cxx.extract` tagged templates, including the `.tag()` form, in VS Code. See its [README](https://github.com/jk2908/cxx/tree/main/packages/vscode-cxx) for install instructions.
 
 ## License
 
