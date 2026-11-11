@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1
+
+### Docs
+
+- Documented that `.cxx` must be included in `tsconfig`.
+- Documented importing generated types for the explicit `tag<HeroClasses>()` form.
+- Clarified the `embed` and `extract` delivery modes and the recommended requirements.
+
+No runtime changes.
+
 ## 0.6.0
 
 ### Features
