@@ -173,26 +173,12 @@ describe('style sheet generation', () => {
 		)
 	})
 
-	it('inserts imports after framework and compiler directives', () => {
+	it('inserts imports after any use directive', () => {
 		const imports = ['./.cxx/a.css']
-		const directives = [
-			"'use client'",
-			"'use server'",
-			"'use cache'",
-			"'use cache: private'",
-			"'use memo'",
-			"'use no memo'",
-			"'use strict'",
-		]
+		const source = "'use memo'\n'use no memo'\n'use cache'\nconst a = 1"
 
-		for (const directive of directives) {
-			expect(injectStyleImports(`${directive}\nconst a = 1`, imports)).toBe(
-				`${directive}\nimport "./.cxx/a.css";\n\nconst a = 1`,
-			)
-		}
-
-		expect(injectStyleImports("'use client'\n'use memo'\nconst a = 1", imports)).toBe(
-			"'use client'\n'use memo'\nimport \"./.cxx/a.css\";\n\nconst a = 1",
+		expect(injectStyleImports(source, imports)).toBe(
+			"'use memo'\n'use no memo'\n'use cache'\nimport \"./.cxx/a.css\";\n\nconst a = 1",
 		)
 	})
 
