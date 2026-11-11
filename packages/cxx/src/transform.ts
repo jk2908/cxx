@@ -24,6 +24,7 @@ type CollectResult = {
 	config: string
 	template: string
 	tags: Tags
+	tagNames: Map<string, string>
 	sheets: StyleSheet[]
 	map: SourceMap | null
 }
@@ -251,6 +252,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 	}).visit(parsed.program)
 
 	const tags: Tags = new Map()
+	const tagNames = new Map<string, string>()
 	const sheets: StyleSheet[] = []
 	const magic = new MagicString(source)
 	const typeSuffix = config.typeSuffix === false ? '' : (config.typeSuffix ?? 'Classes')
@@ -305,6 +307,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 			if (tags.has(tagWithSuffix)) throw new DuplicateTagError(tagWithSuffix)
 
 			tags.set(tagWithSuffix, Object.keys(styles))
+			tagNames.set(templateMarker.name, tagWithSuffix)
 		}
 
 		let replacement: string
@@ -337,6 +340,7 @@ export function collect(source: string, id: string, config: PluginConfig) {
 		config: configKey,
 		template,
 		tags,
+		tagNames,
 		sheets,
 		map,
 	}

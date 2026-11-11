@@ -10,4 +10,5 @@ export type {
 	Result,
 	StyleMode,
 	StyleProps,
+	TagMap,
 } from './types.js'

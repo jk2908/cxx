@@ -36,6 +36,11 @@ export type StyleProps = EmbedStyleDescriptor & StyleElementProps
 
 export type Tags = Map<string, string[]>
 
+/**
+ * Raw tag name to generated class-key type. Augmented by the generated `.cxx/index.d.ts`.
+ */
+export interface TagMap {}
+
 export type PluginConfig = {
 	typeSuffix?: string | false
 	watch?: {
@@ -44,13 +49,23 @@ export type PluginConfig = {
 	}
 }
 
-export type EmbedTag = <ClassName extends string = string>(
-	name: string,
-) => (_: TemplateStringsArray) => EmbedResult<ClassName>
+export type EmbedTag = {
+	<Name extends keyof TagMap>(
+		name: Name,
+	): (_: TemplateStringsArray) => EmbedResult<TagMap[Name] & string>
+	<ClassName extends string = string>(
+		name: string,
+	): (_: TemplateStringsArray) => EmbedResult<ClassName>
+}
 
-export type ExtractTag = <ClassName extends string = string>(
-	name: string,
-) => (_: TemplateStringsArray) => ExtractResult<ClassName>
+export type ExtractTag = {
+	<Name extends keyof TagMap>(
+		name: Name,
+	): (_: TemplateStringsArray) => ExtractResult<TagMap[Name] & string>
+	<ClassName extends string = string>(
+		name: string,
+	): (_: TemplateStringsArray) => ExtractResult<ClassName>
+}
 
 export type EmbedStyleTag = ((_: TemplateStringsArray) => EmbedResult) & {
 	tag: EmbedTag

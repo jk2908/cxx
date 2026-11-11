@@ -29,6 +29,7 @@ const logger = new Logger(NAME)
 type FileManifest = {
 	file: string
 	tags: Record<string, string[]>
+	names: Record<string, string>
 	sheets: string[]
 }
 
@@ -82,8 +83,13 @@ export class Artifacts {
 	 * Save a file's manifest and write any extracted sheets, returning the paths to import them.
 	 * The manifest is written first so a sweep can't delete a sheet it hasn't seen referenced.
 	 */
-	write(filePath: string, tags: Tags, sheets: StyleSheet[]) {
-		this.#writeManifest(filePath, tags, sheets)
+	write(
+		filePath: string,
+		tags: Tags,
+		sheets: StyleSheet[],
+		tagNames: Map<string, string> = new Map(),
+	) {
+		this.#writeManifest(filePath, tags, sheets, tagNames)
 
 		if (!sheets.length) return []
 
@@ -125,8 +131,8 @@ export class Artifacts {
 			return
 		}
 
-		const { tags, sheets } = collect(source, filePath, config)
-		this.#writeManifest(filePath, tags, sheets)
+		const { tags, tagNames, sheets } = collect(source, filePath, config)
+		this.#writeManifest(filePath, tags, sheets, tagNames)
 	}
 
 	/**
@@ -197,7 +203,12 @@ export class Artifacts {
 	 * Write a file's manifest, or delete it if the file generated nothing. Skips the write when the
 	 * manifest is unchanged.
 	 */
-	#writeManifest(filePath: string, tags: Tags, sheets: StyleSheet[]) {
+	#writeManifest(
+		filePath: string,
+		tags: Tags,
+		sheets: StyleSheet[],
+		tagNames: Map<string, string>,
+	) {
 		if (!tags.size && !sheets.length) {
 			this.#removeManifest(filePath)
 			return
@@ -207,6 +218,7 @@ export class Artifacts {
 		const content = JSON.stringify({
 			file: path.resolve(filePath),
 			tags: Object.fromEntries(tags),
+			names: Object.fromEntries(tagNames),
 			sheets: sheets.map(sheet => sheet.hash),
 		} satisfies FileManifest)
 
@@ -263,6 +275,7 @@ export class Artifacts {
 		const { sweep } = options
 		const manifests = await this.#readManifests()
 		const tags: Tags = new Map()
+		const tagNames = new Map<string, string>()
 		const fileByTag = new Map<string, string>()
 		const duplicates: DuplicateTag[] = []
 		const referenced = new Set<string>()
@@ -288,6 +301,10 @@ export class Artifacts {
 				tags.set(name, classes)
 			}
 
+			for (const [name, type] of Object.entries(manifest.names ?? {})) {
+				if (!tagNames.has(name)) tagNames.set(name, type)
+			}
+
 			if (sweep) {
 				for (const hash of manifest.sheets) referenced.add(hash)
 			}
@@ -299,7 +316,7 @@ export class Artifacts {
 			await fs.rm(typeFile, { force: true })
 		} else {
 			await fs.mkdir(this.#generatedDir, { recursive: true })
-			await maybeWrite(typeFile, renderTypes(tags))
+			await maybeWrite(typeFile, renderTypes(tags, tagNames))
 		}
 
 		for (const duplicate of duplicates) {
@@ -365,15 +382,30 @@ export class Artifacts {
 /**
  * Render the generated declaration file contents for a set of collected tags.
  */
-function renderTypes(tags: Tags) {
+function renderTypes(tags: Tags, tagNames: Map<string, string>) {
+	const body = [tagsToType(tags), tagNamesToType(tagNames)].filter(Boolean).join('\n')
+
 	return `${AUTOGEN_MSG}
 
 import '${PKG_NAME}'
 
 declare module '${PKG_NAME}' {
-${tagsToType(tags)}
+${body}
 }
 `
+}
+
+/**
+ * Render the raw tag names as an interface so the tag functions can infer their class keys.
+ */
+function tagNamesToType(tagNames: Map<string, string>) {
+	if (!tagNames.size) return ''
+
+	const entries = [...tagNames]
+		.toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([name, type]) => `\t\t${JSON.stringify(name)}: ${type}`)
+
+	return ['\texport interface TagMap {', ...entries, '\t}'].join('\n')
 }
 
 /**

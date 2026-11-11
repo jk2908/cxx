@@ -60,12 +60,12 @@ Other `<style>` props like `media` pass straight through.
 
 ### Typed class names
 
-Named blocks can generate class-key types:
+Named blocks generate class-key types, and the tag functions infer them from the tag name:
 
 ```tsx
-import { cxx, Style, type HeroClasses } from '@jk2908/cxx'
+import { cxx, Style } from '@jk2908/cxx'
 
-const hero = cxx.embed.tag<HeroClasses>('hero')`
+const hero = cxx.embed.tag('hero')`
 	.hero {
 		display: flex;
 	}
@@ -88,6 +88,8 @@ export function Hero() {
 
 // `styles.coppy` is a type error
 ```
+
+You can still pass the type explicitly with `cxx.embed.tag<HeroClasses>('hero')`.
 
 The name passed to `cxx.embed.tag(...)` becomes the exported type name: the `typeSuffix` is appended, then the result is converted to Pascal Case. With the default suffix, `cxx.embed.tag('hero')` becomes `HeroClasses`, and `cxx.embed.tag('marketing-banner')` becomes `MarketingBannerClasses`. If `typeSuffix` is `false`, they become `Hero` and `MarketingBanner`.
 

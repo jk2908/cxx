@@ -67,6 +67,9 @@ describe('artifact manifests', () => {
 
 		expect(merged).toContain('export type AClasses')
 		expect(merged).toContain('export type BClasses')
+		expect(merged).toContain('export interface TagMap')
+		expect(merged).toContain('"a": AClasses')
+		expect(merged).toContain('"b": BClasses')
 
 		// removing a source file drops its tags from the merged surface
 		await fs.rm(fileA, { force: true })

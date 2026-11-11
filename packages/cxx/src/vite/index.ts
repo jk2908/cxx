@@ -98,7 +98,7 @@ export default function cxx(pluginConfig: PluginConfig = {}) {
 			if (result.template === code) return null
 
 			const file = resolveWatchFile(cleanId)
-			const imports = artifacts.write(file, result.tags, result.sheets)
+			const imports = artifacts.write(file, result.tags, result.sheets, result.tagNames)
 			const template = injectStyleImports(result.template, imports)
 
 			return {

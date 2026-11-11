@@ -38,7 +38,12 @@ export function processFile(
 	loaderArtifacts ??= new Artifacts(projectRoot)
 
 	const result = collect(source, resolvedFilePath, pluginConfig)
-	const imports = loaderArtifacts.write(resolvedFilePath, result.tags, result.sheets)
+	const imports = loaderArtifacts.write(
+		resolvedFilePath,
+		result.tags,
+		result.sheets,
+		result.tagNames,
+	)
 	const template = injectStyleImports(result.template, imports)
 
 	return { ...result, template }

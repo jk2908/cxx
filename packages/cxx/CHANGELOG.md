@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Tag class keys are inferred from the tag name through a generated `TagMap`. Explicit types such as `cxx.embed.tag<HeroClasses>('hero')` still work.
+
 ## 0.5.0
 
 ### Breaking
