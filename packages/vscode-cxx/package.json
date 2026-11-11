@@ -1,8 +1,8 @@
 {
   "name": "vscode-cxx",
   "displayName": "cxx",
-  "description": "Syntax highlighting for cxx and cxx.tag() tagged template literals",
-  "version": "0.1.0",
+  "description": "Syntax highlighting for cxx.embed and cxx.extract tagged template literals",
+  "version": "0.2.0",
   "publisher": "jk2908",
   "author": "Jerome Kenway",
   "license": "MIT",
