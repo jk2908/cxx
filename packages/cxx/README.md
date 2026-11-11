@@ -2,8 +2,6 @@
 
 Build-time CSS template tag utilities for React 19.
 
-## Why
-
 - CSS Modules without a separate stylesheet file.
 - Typed class keys generated from the tagged block.
 - Two delivery modes: `extract` hands CSS to the bundler, while `embed` renders `<style />` tags that React 19 hoists into the head.
@@ -99,7 +97,7 @@ export function Hero() {
 // `styles.coppy` is a type error
 ```
 
-You can still pass the type explicitly. The generated type is exported from the package root:
+You can also pass the type explicitly. The generated type is exported from the package root:
 
 ```tsx
 import { cxx, type HeroClasses } from '@jk2908/cxx'
