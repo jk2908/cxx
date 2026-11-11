@@ -6,7 +6,7 @@ Build-time CSS template tag utilities for React 19.
 
 - CSS Modules without a separate stylesheet file.
 - Typed class keys generated from the tagged block.
-- Two delivery modes: bundler-extracted CSS, or React 19 style hoisting.
+- Two delivery modes: `extract` hands CSS to the bundler, while `embed` renders `<style />` tags that React 19 hoists into the head.
 
 ## Install
 
@@ -16,7 +16,17 @@ npm install @jk2908/cxx react react-dom
 
 ## Requirements
 
-Node.js 20 or newer, React 19, and either Vite 4–8 or Next 15–16 with the App Router.
+Recommended: Node.js 20 or newer, React 19, and Vite 7+ or Next 15+ with the App Router.
+
+Generated types live in `.cxx/index.d.ts`, so `.cxx` must be included in your `tsconfig`:
+
+```json
+{
+	"include": ["src", ".cxx"]
+}
+```
+
+Without it, the generated types and tag inference are not part of the TypeScript program.
 
 ## Usage
 
@@ -89,7 +99,17 @@ export function Hero() {
 // `styles.coppy` is a type error
 ```
 
-You can still pass the type explicitly with `cxx.embed.tag<HeroClasses>('hero')`.
+You can still pass the type explicitly. The generated type is exported from the package root:
+
+```tsx
+import { cxx, type HeroClasses } from '@jk2908/cxx'
+
+const hero = cxx.embed.tag<HeroClasses>('hero')`
+	.hero {
+		display: flex;
+	}
+`
+```
 
 The name passed to `cxx.embed.tag(...)` becomes the exported type name: the `typeSuffix` is appended, then the result is converted to Pascal Case. With the default suffix, `cxx.embed.tag('hero')` becomes `HeroClasses`, and `cxx.embed.tag('marketing-banner')` becomes `MarketingBannerClasses`. If `typeSuffix` is `false`, they become `Hero` and `MarketingBanner`.
 
