@@ -13,7 +13,7 @@ const nextConfig = {
 	},
 	typescript: {
 		// Next's built-in tsc step stalls unpredictably on Vercel; we run an
-		// explicit tsgo gate in the build script instead so this is redundant.
+		// explicit tsc gate in the build script instead so this is redundant.
 		ignoreBuildErrors: true,
 	},
 	eslint: {
