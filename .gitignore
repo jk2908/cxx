@@ -3,4 +3,5 @@ dist
 local
 .cxx
 *.vsix
+*.tsbuildinfo
 .DS_Store
