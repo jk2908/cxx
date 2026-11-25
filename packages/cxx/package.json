@@ -49,7 +49,7 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "bun run ./build.ts && bun x tsc --project tsconfig.json --emitDeclarationOnly",
+		"build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsgo && node scripts/copy-non-ts-files.mjs",
 		"prepack": "npm run build",
 		"test": "bunx vitest"
 	},
