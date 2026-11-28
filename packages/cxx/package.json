@@ -1,6 +1,6 @@
 {
 	"name": "@jk2908/cxx",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"description": "Build-time CSS template tag utilities for React and Solid",
 	"keywords": [
 		"css",

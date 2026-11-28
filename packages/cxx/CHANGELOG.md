@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1
+
+### Docs
+
+- Documented each `Style` adapter without referencing the other framework.
+- Clarified how the Solid adapter dedupes: the descriptor's content hash is the head identity.
+- Simplified the README delivery-mode and requirements wording.
+
+No runtime changes.
+
 ## 0.7.0
 
 ### Breaking
