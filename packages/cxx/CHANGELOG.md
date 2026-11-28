@@ -12,7 +12,7 @@
 
 ### Features
 
-- Added a Solid 2 adapter at `@jk2908/cxx/solid-js`. It renders through `@solidjs/meta`, keying each stylesheet by `href` so Solid's head registry dedupes it and disposes it on unmount. `href` and `precedence` are never forwarded to the DOM.
+- Added a Solid 2 adapter at `@jk2908/cxx/solid-js`. It renders through `@solidjs/meta`, using the descriptor's content hash as the head identity so each stylesheet appears once and is disposed when nothing renders it anymore.
 - `react`, `react-dom`, `solid-js`, `@solidjs/web` and `@solidjs/meta` are now optional peer dependencies.
 
 The transform, Vite plugin, Next integration and `extract` mode are unchanged and framework-agnostic.

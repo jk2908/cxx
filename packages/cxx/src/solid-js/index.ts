@@ -17,9 +17,9 @@ export type StyleProps = Omit<
  * stylesheet its own identity: repeated renders produce a single `<style>`, and
  * it is disposed once the last component using it unmounts.
  *
- * There is no `precedence` on Solid — that is React's ordering hint, and it is
- * absent from the descriptor entirely. `href` is consumed as the key and never
- * reaches the DOM.
+ * The descriptor's content hash is the head identity, so repeated renders
+ * collapse into a single tag. Solid has no `precedence`: that is React's
+ * ordering hint, and it is not part of the descriptor.
  */
 export function Style(props: StyleProps) {
 	const { mode: _mode, href, css, ...rest } = props

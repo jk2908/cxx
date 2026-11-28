@@ -101,9 +101,9 @@ export function Button() {
 }
 ```
 
-The Solid `Style` writes through `@solidjs/meta`, which keys head tags by identity. `styleProps.href` becomes that identity, so each stylesheet appears once regardless of how many components render it, and is removed when the last one unmounts. `href` is consumed here and never reaches the DOM.
+The Solid `Style` writes through `@solidjs/meta`, which keys head tags by identity. The descriptor's content hash is that identity, so each stylesheet appears once regardless of how many components render it, and is removed when the last one unmounts.
 
-There is no `precedence` on Solid. It is React's ordering hint, so it is not part of `styleProps` at all — each adapter decides what to do with the descriptor.
+Solid has no `precedence`: that is React's ordering hint, and it is not part of `styleProps`.
 
 
 ### Typed class names
