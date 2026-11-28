@@ -8,7 +8,7 @@
   - `@jk2908/cxx/react`
   - `@jk2908/cxx/solid-js`
 - `StyleProps` moved to the same entries, so it is typed against the framework in use.
-- `EmbedStyleDescriptor` / `styleProps` no longer carry `precedence`. It is a React ordering hint, so the React `Style` defaults it to `'default'` and accepts an override. Solid has no equivalent.
+- `EmbedStyleDescriptor` / `styleProps` no longer carry `precedence`. The React `Style` defaults it to `'default'` and accepts an override.
 
 ### Features
 

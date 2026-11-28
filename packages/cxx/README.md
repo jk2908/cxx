@@ -4,7 +4,7 @@ Build-time CSS template tag utilities for React 19 and Solid 2.
 
 - CSS Modules without a separate stylesheet file.
 - Typed class keys generated from the tagged block.
-- Two delivery modes: `extract` hands CSS to the bundler, while `embed` renders `<style />` tags into the document head — React 19 hoists them, Solid's head registry keys them.
+- Two delivery modes: `extract` hands CSS to the bundler, while `embed` renders `<style />` tags into the document head.
 
 ## Install
 
@@ -24,7 +24,7 @@ npm install solid-js @solidjs/web @solidjs/meta
 
 ## Requirements
 
-Recommended: Node.js 20 or newer, React 19 or Solid 2, and Vite 7+ (or Next 15+ with the App Router for React).
+Recommended: Node.js 20 or newer, Vite 7+, and React 19 or Solid 2.
 
 Generated types live in `.cxx/index.d.ts`, so `.cxx` must be included in your `tsconfig`:
 
@@ -68,7 +68,7 @@ export function Button() {
 - `styles` is the generated CSS Modules class map.
 - `styleProps` describes the embedded stylesheet. Pass it to `<Style />`.
 
-`<Style />` renders a `<style>` element for embedded styles. On React, `precedence` orders the hoisted stylesheet and defaults to `'default'`; pass it to override:
+`<Style />` renders a `<style>` element for embedded styles. `precedence` orders the hoisted stylesheet and defaults to `'default'`; pass it to override:
 
 ```tsx
 <Style {...styleProps} precedence="medium" />
@@ -102,8 +102,6 @@ export function Button() {
 ```
 
 The Solid `Style` writes through `@solidjs/meta`, which keys head tags by identity. The descriptor's content hash is that identity, so each stylesheet appears once regardless of how many components render it, and is removed when the last one unmounts.
-
-Solid has no `precedence`: that is React's ordering hint, and it is not part of `styleProps`.
 
 
 ### Typed class names

@@ -11,7 +11,7 @@ export type StyleProps = Omit<
 	'href' | 'children'
 > & {
 	/**
-	 * React orders hoisted stylesheets by precedence. Defaults to `'default'`.
+	 * Hoisted stylesheet order. Defaults to `'default'`.
 	 */
 	precedence?: string
 } & EmbedStyleDescriptor
@@ -19,9 +19,8 @@ export type StyleProps = Omit<
 /**
  * Render an embedded style descriptor as a hoisted style element.
  *
- * React 19 hoists `<style href precedence>` into the document head, dedupes by
- * `href` and orders by `precedence`. `precedence` is a React concern, so the
- * transform does not emit one and this component supplies the default.
+ * `<style href precedence>` is hoisted into the document head, deduped by
+ * `href` and ordered by `precedence`, which defaults to `'default'`.
  */
 export function Style(props: StyleProps): ReactElement {
 	const { mode: _mode, href, css, precedence = 'default', ...rest } = props
