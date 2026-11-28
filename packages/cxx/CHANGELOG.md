@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.0
+
+### Breaking
+
+- `Style` is no longer exported from `@jk2908/cxx`. Import it from the framework entry:
+  - `@jk2908/cxx/react`
+  - `@jk2908/cxx/solid-js`
+- `StyleProps` moved to the same entries, so it is typed against the framework in use.
+- `EmbedStyleDescriptor` / `styleProps` no longer carry `precedence`. It is a React ordering hint, so the React `Style` defaults it to `'default'` and accepts an override. Solid has no equivalent.
+
+### Features
+
+- Added a Solid 2 adapter at `@jk2908/cxx/solid-js`. It renders through `@solidjs/meta`, keying each stylesheet by `href` so Solid's head registry dedupes it and disposes it on unmount. `href` and `precedence` are never forwarded to the DOM.
+- `react`, `react-dom`, `solid-js`, `@solidjs/web` and `@solidjs/meta` are now optional peer dependencies.
+
+The transform, Vite plugin, Next integration and `extract` mode are unchanged and framework-agnostic.
+
+### Tests
+
+- Added coverage for the Solid adapter's prop mapping.
+
 ## 0.6.2
 
 ### Fixes

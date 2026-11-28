@@ -1,20 +1,30 @@
 # @jk2908/cxx
 
-Build-time CSS template tag utilities for React 19.
+Build-time CSS template tag utilities for React 19 and Solid 2.
 
 - CSS Modules without a separate stylesheet file.
 - Typed class keys generated from the tagged block.
-- Two delivery modes: `extract` hands CSS to the bundler, while `embed` renders `<style />` tags that React 19 hoists into the head.
+- Two delivery modes: `extract` hands CSS to the bundler, while `embed` renders `<style />` tags into the document head — React 19 hoists them, Solid's head registry keys them.
 
 ## Install
 
 ```sh
-npm install @jk2908/cxx react react-dom
+npm install @jk2908/cxx
+```
+
+Then install the framework entry you use:
+
+```sh
+# React
+npm install react react-dom
+
+# Solid
+npm install solid-js @solidjs/web @solidjs/meta
 ```
 
 ## Requirements
 
-Recommended: Node.js 20 or newer, React 19, and Vite 7+ or Next 15+ with the App Router.
+Recommended: Node.js 20 or newer, React 19 or Solid 2, and Vite 7+ (or Next 15+ with the App Router for React).
 
 Generated types live in `.cxx/index.d.ts`, so `.cxx` must be included in your `tsconfig`:
 
@@ -28,8 +38,11 @@ Without it, the generated types and tag inference are not part of the TypeScript
 
 ## Usage
 
+The template transforms are shared. Only the `Style` component is framework-specific.
+
 ```tsx
-import { cxx, Style } from '@jk2908/cxx'
+import { cxx } from '@jk2908/cxx'
+import { Style } from '@jk2908/cxx/react'
 
 const { styles, styleProps } = cxx.embed`
 	.button {
@@ -55,7 +68,7 @@ export function Button() {
 - `styles` is the generated CSS Modules class map.
 - `styleProps` describes the embedded stylesheet. Pass it to `<Style />`.
 
-`<Style />` renders a `<style>` element for embedded styles. `styleProps` already includes `precedence: 'default'`, so spread it first and set `precedence` after to override it:
+`<Style />` renders a `<style>` element for embedded styles. On React, `precedence` orders the hoisted stylesheet and defaults to `'default'`; pass it to override:
 
 ```tsx
 <Style {...styleProps} precedence="medium" />
@@ -63,12 +76,43 @@ export function Button() {
 
 Other `<style>` props like `media` pass straight through.
 
+### Solid
+
+Import `Style` from the Solid entry instead:
+
+```tsx
+import { cxx } from '@jk2908/cxx'
+import { Style } from '@jk2908/cxx/solid-js'
+
+const { styles, styleProps } = cxx.embed`
+	.button {
+		display: inline-flex;
+		gap: 0.75rem;
+	}
+`
+
+export function Button() {
+	return (
+		<button class={styles.button}>
+			<Style {...styleProps} />
+			Click me
+		</button>
+	)
+}
+```
+
+The Solid `Style` writes through `@solidjs/meta`, which keys head tags by identity. `styleProps.href` becomes that identity, so each stylesheet appears once regardless of how many components render it, and is removed when the last one unmounts. `href` is consumed here and never reaches the DOM.
+
+There is no `precedence` on Solid. It is React's ordering hint, so it is not part of `styleProps` at all — each adapter decides what to do with the descriptor.
+
+
 ### Typed class names
 
 Named blocks generate class-key types, and the tag functions infer them from the tag name:
 
 ```tsx
-import { cxx, Style } from '@jk2908/cxx'
+import { cxx } from '@jk2908/cxx'
+import { Style } from '@jk2908/cxx/react'
 
 const { styles, styleProps } = cxx.embed.tag('hero')`
 	.hero {

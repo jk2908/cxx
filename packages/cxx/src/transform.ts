@@ -320,7 +320,6 @@ export function collect(source: string, id: string, config: PluginConfig) {
 				mode: 'embed',
 				href: `cxx-${hash}`,
 				css: cssText,
-				precedence: 'default',
 			}
 
 			replacement = `{\n\tmode: 'embed',\n\tstyles: ${JSON.stringify(styles)},\n\tstyleProps: ${JSON.stringify(styleProps)}\n}`

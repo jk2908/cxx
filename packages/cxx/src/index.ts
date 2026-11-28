@@ -1,5 +1,4 @@
 export { cxx } from './runtime.js'
-export { Style } from './style.js'
 export type {
 	Cxx,
 	EmbedResult,
@@ -9,6 +8,5 @@ export type {
 	ExtractStyleTag,
 	Result,
 	StyleMode,
-	StyleProps,
 	TagMap,
 } from './types.js'

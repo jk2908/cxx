@@ -1,12 +1,9 @@
-import type { ComponentPropsWithRef } from 'react'
-
 export type StyleMode = 'embed' | 'extract'
 
 export type EmbedStyleDescriptor = {
 	mode: 'embed'
 	href: string
 	css: string
-	precedence: string
 }
 
 export type EmbedResult<ClassName extends string = string> = {
@@ -23,16 +20,6 @@ export type ExtractResult<ClassName extends string = string> = {
 export type Result<ClassName extends string = string> =
 	| EmbedResult<ClassName>
 	| ExtractResult<ClassName>
-
-type StyleElementProps = Omit<
-	ComponentPropsWithRef<'style'>,
-	'href' | 'precedence' | 'children'
-> & {
-	href: string
-	precedence: string
-}
-
-export type StyleProps = EmbedStyleDescriptor & StyleElementProps
 
 export type Tags = Map<string, string[]>
 

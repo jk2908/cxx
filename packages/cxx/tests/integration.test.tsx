@@ -1,7 +1,7 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { Style } from '../src/index.js'
+import { Style } from '../src/react/index.js'
 import { collect as _collect } from '../src/transform.js'
 
 let counter = 0
@@ -15,7 +15,7 @@ type Result =
 	| {
 			mode: 'embed'
 			styles: Record<string, string>
-			styleProps: { href: string; css: string; precedence: string }
+			styleProps: { href: string; css: string }
 	  }
 	| { mode: 'extract'; styles: Record<string, string> }
 

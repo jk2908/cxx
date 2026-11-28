@@ -32,7 +32,6 @@ type Result =
 			styleProps: {
 				href: string
 				css: string
-				precedence: string
 			}
 	  }
 	| { mode: 'extract'; styles: Record<string, string> }
@@ -50,9 +49,9 @@ describe('collect — embed cxx template', () => {
 		expect(tags.size).toBe(0)
 		expect(Object.keys(result.styles)).toEqual(expect.arrayContaining(['header', 'body']))
 		expect(result.styleProps.mode).toBe('embed')
-		expect(result.styleProps.precedence).toBe('default')
 		expect(result.styleProps.href).toMatch(/^cxx-[A-Za-z0-9_-]{12}$/)
 		expect(result.styleProps.css).toContain(result.styles.header)
+		expect('precedence' in result.styleProps).toBe(false)
 	})
 
 	it('supports destructuring the result object', () => {

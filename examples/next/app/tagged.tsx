@@ -1,4 +1,5 @@
-import { cxx, Style, type TaggedClasses } from '@jk2908/cxx'
+import { cxx, type TaggedClasses } from '@jk2908/cxx'
+import { Style } from '@jk2908/cxx/react'
 
 const button = cxx.embed.tag<TaggedClasses>('Tagged')`
   .tagged {
